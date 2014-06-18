@@ -1,0 +1,11 @@
+{application,monscr,
+             [{description,"monscr"},
+              {vsn,"0.1"},
+              {modules,[bert,data_utils,db_utils,monscr,monscr_app,monscr_sup,
+                        rbbt_utils,role,role_consumer,role_sup,scribble,
+                        sup_role_sup]},
+              {registered,[monscr]},
+              {mod,{monscr_app,[]}},
+              {env,[]},
+              {included_applications,[lager]},
+              {applications,[kernel,stdlib]}]}.

@@ -1,0 +1,17 @@
+local protocol bid_client at client(role client, role sebay) {
+	request_item(string) to sebay;
+	rec checkPoint{
+		response_item(string) from sebay;
+		choice at client{
+			makebid() to sebay;
+			send_newPrice(int) to sebay;
+			choice at sebay{
+				lower() from sebay;
+				continue checkPoint;
+			}or{
+				accept() from sebay;
+				send_update(string) from sebay;
+			}
+		}or{
+			nobid() to sebay;
+}}}

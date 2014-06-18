@@ -1,0 +1,13 @@
+.idea
+.eunit
+.rebar
+.project
+.settings
+.DS_STORE
+logs
+deps
+*.iml
+*.o
+*.beam
+*.plt
+*.dump

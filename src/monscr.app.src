@@ -1,0 +1,16 @@
+%% -*- erlang -*-
+{application, monscr,
+ [{description, "monscr"},
+  {vsn, "0.1"},
+  {modules, [monscr_sup,
+  			 monscr,
+  			 role_sup,
+  			 role,
+  			 scribble,
+  			 sup_role_sup]},
+  {registered, [monscr]},
+  {mod, {'monscr_app', []}},
+  {env, []},
+  {included_applications, [lager]},
+  {applications, [kernel, stdlib]}]}.
+ 
