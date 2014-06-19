@@ -77,7 +77,9 @@ init(State) ->
   Role = State#role_data.spec#spec.role,
 
   %This method will load and in case of not having the file requestes it from the source
-  Scr = manage_projection_file("../resources", State),
+  lager:info("before manage"),
+  Scr = manage_projection_file("down/", State),
+  lager:info("after mange"),
 
   lager:info("[~p] Protocol ~p  parsed",[self(),Scr]),
 
@@ -352,17 +354,23 @@ code_change(_OldVsn, State, _Extra) ->
 
 manage_projection_file(Path, State)->
 
+  %TODO: solve conflictivity folders when downlaod and source in the localhost
   FileName = atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
 
   case file:read_file(Path ++ FileName) of
-    {ok, Binary} ->
+    {ok, Binary} -> lager:info("file already exists"),
       {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
       {ok,Scr} = scribble:parse(Final),
       Scr;
     {error, _Reason} ->
-      Socket = open_reception_socket(6565),
-      request_file_source(State#role_data.spec#spec.imp_ref, FileName),
+      lager:info("Error correct path"),
+      Listen = open_reception_socket(6565),
+      lager:info("socket created"),
+      request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", 6565),
+      Socket =acceptor(Listen),
+      lager:info("request file to source"),
       download_projection_from_source(Socket, Path, FileName),
+      lager:info("file downdload"),
       {ok, Binary} = file:read_file(Path ++ FileName),
       {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
       {ok,Scr} = scribble:parse(Final),
@@ -371,8 +379,8 @@ manage_projection_file(Path, State)->
 
 
 open_reception_socket(Port)->
-  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, true}]),
-  acceptor(Listen).
+  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, false}]),
+  Listen.
 
 acceptor(Listen) ->
   case gen_tcp:accept(Listen) of
@@ -381,8 +389,8 @@ acceptor(Listen) ->
   end.
 
 
-request_file_source(ImpRef, FileName) ->
-  gen_monrcp:send(ImpRef, {callback,projection_request,{send,FileName}}).
+request_file_source(ImpRef, FileName, Host, Port) ->
+  gen_monrcp:send(ImpRef, {callback,projection_request,{send,FileName,Host, Port}}).
 
 
 download_projection_from_source(Socket, Path, Filename) ->
@@ -390,15 +398,17 @@ download_projection_from_source(Socket, Path, Filename) ->
   save_file(Path, Filename,Bs).
 
 file_receiver_loop(Socket,Bs)->
-  io:format("~nRicezione file in corso~n"),
+  lager:info("insie"),
   case gen_tcp:recv(Socket, 0) of
-    {ok, B} -> file_receiver_loop(Socket,[Bs, B]);
-    {error, closed} -> Bs
+    {ok, B} -> lager:info("loop"),file_receiver_loop(Socket,[Bs, B]);
+    {error, closed} -> Bs;
+    M -> lager:info("Error uknown ~p",[M])
   end.
 
 save_file(Path, Filename,Bs) ->
   lager:info("~nFilename: ~p",[Filename]),
-  {ok, Fd} = file:open(Path ++ Filename, write),
+  PathFile  = Path ++ Filename,
+  {ok, Fd} = file:open(PathFile, write),
   file:write(Fd, Bs),
   file:close(Fd).
 
