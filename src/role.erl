@@ -16,6 +16,10 @@
 -export([start_link/1, send/4, 'end'/1, join/3, create/2, cancel/2]).
 -compile(export_all).
 
+-define(USER,  <<"test">>).
+-define(PWD,  <<"test">>).
+-define(HOST,  "94.23.60.219").
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -90,10 +94,9 @@ init(State) ->
     {error, _Reason} -> erlang:exit()
   end,
 
-  User = <<"test">>,
-	Pwd = <<"test">>,
+  ok = check_signatures(Role, State#role_data.spec#spec.funcs),
 
-  Connection = rbbt_utils:connect(User, Pwd, "94.23.60.219"),
+  Connection = rbbt_utils:connect(?USER, ?PWD, ?HOST),
   Channel = rbbt_utils:open_channel(Connection),
 
   lager:info("[~p] [AMQP] connection stablished~n",[self()]),
@@ -352,6 +355,46 @@ code_change(_OldVsn, State, _Extra) ->
 %% Utilities
 %% ===================================================================
 
+%% check_signatures/2
+%% ====================================================================
+%% @doc
+-spec check_signatures(TableName :: term(), CallbackList :: integer()) -> Result when
+  Result :: {ok} | {error, Reason},
+  Reason :: signature_not_found | wrong_call | unkown.
+%% ====================================================================
+check_signatures(TableName, CallbackList) when is_list(CallbackList)->
+  lager:info("check_signature ~p",[CallbackList]),
+  case catch lists:foreach(fun(Element)->
+
+      case  mnesia:dirty_match_object(TableName, #row{ num = '_' , inst = {'_', Element#func.sign, '_'}}) of
+        [] -> throw(signature_not_found);
+        _  -> ok
+      end
+
+  end, CallbackList) of
+    signature_not_found -> {error, signature_not_found};
+    ok -> {ok};
+    _ -> {error, unkown}
+  end;
+check_signatures(_TableName, _CallbackList) ->
+  {error, wrang_call}.
+
+%% check_for_termination/2
+%% ====================================================================
+%% @doc
+-spec check_for_termination(State :: term(), CurLine :: integer()) -> Result when
+  Result :: true | false.
+%% ====================================================================
+check_for_termination(State,CurLine)->
+  case State#role_data.spec#spec.lines of
+    N when N =:= CurLine ->
+      bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol}),
+      true;
+    _ -> false
+  end.
+
+
+
 %% cancel_protocol/2
 %% ====================================================================
 %% @doc
@@ -406,21 +449,6 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
 %% Verification of protocols
 %% ===================================================================
 
-
-
-%% are_we_done/2
-%% ====================================================================
-%% @doc
--spec check_for_termination(State :: term(), CurLine :: integer()) -> Result when
-  Result :: true | false.
-%% ====================================================================
-check_for_termination(State,CurLine)->
-  case State#role_data.spec#spec.lines of
-    N when N =:= CurLine ->
-      bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol}),
-      true;
-    _ -> false
-  end.
 
 
 %% match_directive/2

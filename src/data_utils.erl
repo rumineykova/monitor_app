@@ -89,11 +89,11 @@ prot_sup_create(Prot, Ref, Roles) ->
 
 func_update(func, Fnc, Val)->
   Fnc#func{ func = Val};
-func_update(msg, Fnc, Val)->
-  Fnc#func{ msg = Val}.
+func_update(sign, Fnc, Val)->
+  Fnc#func{ sign = Val}.
 
 func_create(Msg, Func) ->
-  #func{msg = Msg,
+  #func{sign = Msg,
         func = Func}.
 
 
@@ -149,7 +149,7 @@ spec_update(role, Spec, Val) ->
 spec_update(protocol, Spec, Val) ->
   Spec#spec{ protocol = Val }.
 
-spec_create(Prot, Role, Roles, Ref, ImpRef, Funcs, Proj, Lines) ->
+spec_create(Prot, Role, Roles, Ref, ImpRef, Funcs, Proj, Lines) when is_list(Funcs)->
   #spec{ protocol = Prot,
          role = Role,
          roles = Roles,

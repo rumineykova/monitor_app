@@ -16,7 +16,7 @@
 		funcs}
 ).
 
--record(func,{msg,
+-record(func,{sign,
 		func}
 ).
 

@@ -235,14 +235,14 @@ config_prot_roles(_, _) ->
   Config :: {term(), atom(), term(), atom()},
   Data :: {pid(), term()}.
 %% ====================================================================
-config_funcs({Protocol, Role, Message,Function},{Pid,Acc}) ->
+config_funcs({Protocol, Role, Signature,Function},{Pid,Acc}) ->
   lager:info("Protocol ~p , Acc ~p",[Protocol, Acc]),
   Return = case lists:keyfind(Protocol, 2, Acc) of
     false -> {error, bad_arguments};
     M -> case lists:keyfind(Role, 2, M#prot_sup.roles) of
            false -> {error, role_not_defined};
            L ->
-             New_Func = data_utils:func_create(Message, Function),
+             New_Func = data_utils:func_create(Signature, Function),
              New = data_utils:lrole_add_func(L, New_Func),
 
              Nprot = lists:keyreplace(Role, 2, M#prot_sup.roles, New),
