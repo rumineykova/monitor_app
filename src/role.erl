@@ -76,10 +76,8 @@ init(State) ->
 
   Role = State#role_data.spec#spec.role,
 
-  %TODO: This file should be downlaoded
-  {ok,Data} = file:read_file("resources/"++ atom_to_list(Role) ++ ".scr"),
-	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
-	{ok,Scr} = scribble:parse(Final),
+  %This method will load and in case of not having the file requestes it from the source
+  Scr = manage_projection_file("../resources", State),
 
   lager:info("[~p] Protocol ~p  parsed",[self(),Scr]),
 
@@ -351,6 +349,62 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Utilities
 %% ===================================================================
+
+manage_projection_file(Path, State)->
+
+  FileName = atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
+
+  case file:read_file(Path ++ FileName) of
+    {ok, Binary} ->
+      {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
+      {ok,Scr} = scribble:parse(Final),
+      Scr;
+    {error, _Reason} ->
+      Socket = open_reception_socket(6565),
+      request_file_source(State#role_data.spec#spec.imp_ref, FileName),
+      download_projection_from_source(Socket, Path, FileName),
+      {ok, Binary} = file:read_file(Path ++ FileName),
+      {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
+      {ok,Scr} = scribble:parse(Final),
+      Scr
+  end.
+
+
+open_reception_socket(Port)->
+  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, true}]),
+  acceptor(Listen).
+
+acceptor(Listen) ->
+  case gen_tcp:accept(Listen) of
+    {ok,Socket} -> Socket;
+    {error, Reason} -> io:format("Could not be accepted ~s ~n",[Reason])
+  end.
+
+
+request_file_source(ImpRef, FileName) ->
+  gen_monrcp:send(ImpRef, {callback,projection_request,{send,FileName}}).
+
+
+download_projection_from_source(Socket, Path, Filename) ->
+  Bs = file_receiver_loop(Socket, <<"">>),
+  save_file(Path, Filename,Bs).
+
+file_receiver_loop(Socket,Bs)->
+  io:format("~nRicezione file in corso~n"),
+  case gen_tcp:recv(Socket, 0) of
+    {ok, B} -> file_receiver_loop(Socket,[Bs, B]);
+    {error, closed} -> Bs
+  end.
+
+save_file(Path, Filename,Bs) ->
+  lager:info("~nFilename: ~p",[Filename]),
+  {ok, Fd} = file:open(Path ++ Filename, write),
+  file:write(Fd, Bs),
+  file:close(Fd).
+
+
+
+
 
 %% cancel_protocol/2
 %% ====================================================================
