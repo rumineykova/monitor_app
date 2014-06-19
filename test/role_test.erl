@@ -49,14 +49,14 @@
 prot_iterator_test() ->
 	lager:start(),
 	
-    %% OMG Massive error if the directdory does not exists or can't be reache, BAD_TYPE can't update!!!!!!
-   %application:set_env(mnesia, dir, "../db/"),
+  %% OMG Massive error if the directdory does not exists or can't be reache, BAD_TYPE can't update!!!!!!
+  %application:set_env(mnesia, dir, "../db/"),
 
 	{ok,Data} = file:read_file("../resources/client.scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
 
-  db_utils:install(node()),
+  db_utils:install(node(),"db"),
   case db_utils:get_table(prova) of
     {created, TbName} -> ok;
     {exists, TbName} -> ok;
@@ -71,16 +71,10 @@ prot_iterator_test() ->
 	?assertMatch({ok,_N}, {ok,4} ).
 
 
-mnesia_test()->
-	mnesia:start(),
-	List = mnesia:system_info(tables),
-	
-	?assertMatch({false},role:exist_table(test, List)).
-
 
 mnesia_data_retrive_test() ->
 	lager:start(),
-	application:set_env(mnesia, dir, "../db/"),
+	application:set_env(mnesia, dir, "db"),
 
 	{ok,Data} = file:read_file("../resources/client.scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun role:mytokens/1}]),

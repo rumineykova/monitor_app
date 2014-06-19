@@ -14,17 +14,17 @@
 -compile([{parse_transform, lager_transform}]).
 
 %% API
--export([install/1, get_row/2, update_row/3, add_row/3, get_table/1]).
+-export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
 -export([ets_create/2, ets_lookup/2, ets_insert/2]).
 
 %Might be removed ->
 -export([print_db/2]).
 
-install(Nodes)->
+install(Nodes, Path)->
 
   %Set the directory to store the file for the data base
   %THIS IS IMPORTANT !!!!! NOT remove
-  application:set_env(mnesia, dir, "db"),
+  application:set_env(mnesia, dir, Path),
 
   mnesia:create_schema([Nodes]),
   lager:info("[~p][install] Schmea created",[?MODULE]),
@@ -36,19 +36,28 @@ install(Nodes)->
 
 get_table(TableName)->
   lager:info("[~p]",[?MODULE]),
-  case exist_table(TableName, mnesia:system_info(tables)) of
-    {false} ->    lager:info("[~p][get_table] Mnesia started",[?MODULE]),
-                mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
-                                                {record_name,row},
-                                                {ram_copies, [node()]}
-                                               ]),
-                mnesia:wait_for_tables([TableName], infinity),
-                {created, TableName};
-    {true} -> lager:info("[~p][get_table] [MN] table already exits ~p",[self(), TableName]),
-              {exists, TableName};
-    Reason -> lager:error("[~p][get_table] Unkown success => ~p",[self(), Reason]),
-              {error, Reason}
-  end.
+  %When create gets emptied
+  lager:info("[~p][get_table] Mnesia started",[?MODULE]),
+              mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
+                                              {record_name,row},
+                                              {ram_copies, [node()]}
+                                             ]),
+              mnesia:wait_for_tables([TableName], infinity),
+              {created, TableName}.
+  %TODO: recover without filling
+  %case exist_table(TableName, mnesia:system_info(tables)) of
+  %  {false} ->    lager:info("[~p][get_table] Mnesia started",[?MODULE]),
+  %              mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
+  %                                              {record_name,row},
+  %                                              {ram_copies, [node()]}
+  %                                             ]),
+  %              mnesia:wait_for_tables([TableName], infinity),
+  %              {created, TableName};
+  %  {true} -> lager:info("[~p][get_table] [MN] table already exits ~p",[self(), TableName]),
+  %            {exists, TableName};
+  %  Reason -> lager:error("[~p][get_table] Unkown success => ~p",[self(), Reason]),
+  %            {error, Reason}
+  %end.
 
 exist_table(_Tbl,[])->
   {false};
@@ -67,7 +76,7 @@ exist_table(Tbl,[T|R])->
   Result :: term().
 %% ====================================================================
 add_row(TbName, Num, Instr)->
-  lager:info("[~p] Add row to mnesia #~p int=~p",[self(),Num,Instr]),
+  lager:info("[~p] Add row to ~p #~p int=~p",[self(),TbName,Num,Instr]),
   F = fun() ->
     mnesia:write(TbName,#row{num = Num,inst = Instr},write)
   end,

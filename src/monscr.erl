@@ -179,7 +179,7 @@ register_imp(_Id, State) ->
   {error, error_creating_config}.
 %% ====================================================================
 config_protocol_imp(Config, State)->
-  case internal_create_config(State,Config) of
+  case internal_create_config(Config,State) of
     {ok, UState} ->
       {NUState, RolesIds} = start_roles(UState),
       lager:info("Roles Started ~p",[RolesIds]),
@@ -199,7 +199,7 @@ config_protocol_imp(Config, State)->
 internal_create_config({Pid,{Roles_list, Function_list}}, State) when is_pid(Pid), is_list(Roles_list), is_list(Function_list)->
       {_Pid,New_protocol_sup_list} = lists:foldl(fun config_prot_roles/2, {Pid, State#internal.prot_sup}, Roles_list),
       {_pid,New_protocol_sup_list2} = lists:foldl(fun config_funcs/2 , {Pid,New_protocol_sup_list}, Function_list),
-      {ok, State#internal{ prot_sup = New_protocol_sup_list2 }};
+      {ok, data_utils:internal_update(prot_sup, State,New_protocol_sup_list2)};
 internal_create_config(_State,_Other) ->
   {error, "[monscr.erl][internal_create_config] Wrong call perameters"}.
 
@@ -222,7 +222,7 @@ config_prot_roles({Prot,Role,Roles}, {Pid,Protocol_sup_list}) ->
       Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
       lists:keyreplace(Prot, 1, Protocol_sup_list, Updated_prot_sup)
   end,
-  {ok,{Pid,Return}};
+  {Pid,Return};
 config_prot_roles(_, _) ->
   {error, "[monscr.erl][config_prot_roles] Wrong call parameters"}.
 
@@ -236,6 +236,7 @@ config_prot_roles(_, _) ->
   Data :: {pid(), term()}.
 %% ====================================================================
 config_funcs({Protocol, Role, Message,Function},{Pid,Acc}) ->
+  lager:info("Protocol ~p , Acc ~p",[Protocol, Acc]),
   Return = case lists:keyfind(Protocol, 2, Acc) of
     false -> {error, bad_arguments};
     M -> case lists:keyfind(Role, 2, M#prot_sup.roles) of
@@ -272,7 +273,7 @@ traverse_supervisors(Prot_supervisor, Acc) ->
     Roles = Prot_supervisor#prot_sup.roles,
 
     {ok,RSup} = sup_role_sup:start_child(Acc#internal.main_sup,none),
-    {_,_,_,NRoles} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles}, Roles),
+    {_,_,NRoles} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles}, Roles),
     NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
     Almost = lists:keyreplace(Protocol, 2, Acc#internal.prot_sup, NM),
   data_utils:internal_update(prot_sup, Acc, Almost).
@@ -290,7 +291,7 @@ spawn_role(Role, {Prot, RSup, Acc}) ->
       New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
       New_role_data = data_utils:role_data_create(New_spec, undef, enf),
       {ok,RoleId} =  role_sup:start_child(RSup, New_role_data),
-      lists:keyreplace(Role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
+      lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
     _ -> lager:info("[~p] already added NOT adding it again",[Role]),
       Acc
   end,

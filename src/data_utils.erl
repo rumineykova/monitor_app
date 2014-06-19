@@ -34,17 +34,19 @@ lrole_add_func(Lrole, Func) ->
   lrole_update(addtofuncs, Lrole, Func).
 
 lrole_update(addtofuncs, Lrole, Func)->
-  Lrole#lrole{ funcs = [ Func | Lrole#lrole.funcs]};
+  Lrole#lrole{ funcs = [ Func | Lrole#lrole.funcs] };
 lrole_update(role, Lrole, Role)->
-  Lrole#lrole{role = Role};
+  Lrole#lrole{ role = Role };
 lrole_update(roles, Lrole, Roles) ->
-  Lrole#lrole{roles = Roles};
+  Lrole#lrole{ roles = Roles };
+lrole_update(ref, Lrole, Ref) ->
+  Lrole#lrole{ ref = Ref };
 lrole_update(imp_ref, Lrole, Pid) ->
-  Lrole#lrole{imp_ref = Pid};
+  Lrole#lrole{ imp_ref = Pid };
 lrole_update(funcs, Lrole, Funcs) ->
-  Lrole#lrole{funcs = Funcs}.
+  Lrole#lrole{ funcs = Funcs }.
 
-lrole_create(Role, Roles, Pid, Funcs) ->
+lrole_create(Role, Roles, Pid, Funcs) when is_list(Funcs)->
   #lrole{role = Role,
          roles = Roles,
          imp_ref=Pid,
@@ -73,7 +75,7 @@ prot_sup_update(ref, Psup, Ref) ->
 prot_sup_update(protocol,Psup, Prot) ->
   Psup#prot_sup{ protocol = Prot}.
 
-prot_sup_create(Prot, Ref, Roles = []) ->
+prot_sup_create(Prot, Ref, Roles) ->
   #prot_sup{protocol = Prot,
             ref = Ref,
             roles = Roles
@@ -182,7 +184,7 @@ internal_update(regp, Internal, Val)->
 internal_update(main_sup, Internal, Val) ->
   Internal#internal{ main_sup = Val }.
 
-internal_create( Main_sup, Regp, Prot_sup) ->
+internal_create( Main_sup, Regp, Prot_sup) when is_list(Regp) ->
   #internal{
     main_sup = Main_sup,
     regp = Regp,

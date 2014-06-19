@@ -16,7 +16,7 @@ start(_StartType, _StartArgs) ->
 	lager:start(),
 
   %Start the database
-  db_ustils:install(node()),
+  db_utils:install(node(),"db"),
 
   %Start the monscr suppervisor  == Starts the application
   monscr_sup:start_link().

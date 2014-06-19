@@ -106,7 +106,7 @@ init(State) ->
 
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
-  NSpec = data_utils:role_data_update(lines,State, NumLines),
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec}]),
 
 	{ok, NArgs}.
@@ -184,7 +184,7 @@ handle_cast({create, Src, Rand},State) ->
 
   %Declare the queue an bind it to the new exchange
   Q = rbbt_utils:declare_q(State, BName),
-	ok = rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
+	rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
 
   %Spawn a new consumer for the new queue
 	Cons = role_consumer:start_link({Chn, Q, self()}),
@@ -525,43 +525,43 @@ fix_endings(TbName, Mer, Clines) ->
   Special :: term(),
   Erecname :: term().
 %% ====================================================================
-prot_iterator( Tp,{TbName,RName,Num,Special,Erecname}) when is_list(Tp) -> lager:info("1"),
+prot_iterator( Tp,{TbName,RName,Num,Special,Erecname}) when is_list(Tp) ->
 	lists:foldl(fun prot_iterator/2,{TbName,RName,Num,Special,Erecname}, Tp);
-prot_iterator({protocol,_Name,_Role, _Roles,Content}, St) ->  lager:info("2"),
+prot_iterator({protocol,_Name,_Role, _Roles,Content}, St) ->
   lists:foldl(fun prot_iterator/2,St, Content);
-prot_iterator({from,{atom,_,Lbl},{atom,_,Src}}, {TbName,RName,Num,Special,Erecname}) ->        lager:info("3"),
+prot_iterator({from,{atom,_,Lbl},{atom,_,Src}}, {TbName,RName,Num,Special,Erecname}) ->
   db_utils:add_row(TbName,Num,{from,Lbl,Src}),
   {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({to,{atom,_,Lbl},{atom,_,Dest}}, {TbName,RName,Num,Special,Erecname}) ->  lager:info("4"),
+prot_iterator({to,{atom,_,Lbl},{atom,_,Dest}}, {TbName,RName,Num,Special,Erecname}) ->
   db_utils:add_row(TbName,Num,{to,Lbl,Dest}),
   {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname}) ->    lager:info("5"),
+prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname}) ->
   Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
   {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2, {TbName,RName, Num+1, Special, Rn},Content),
   db_utils:add_row(TbName,Num,{choice,Name,[{'or',Num+1} | NSpecial]}),
   {NTbName, NRName, NNum, [],Erecname};
-prot_iterator({rec,{atom,_Num,CName}, RecContent} , {TbName,RName,Num,Special,Erecname}) ->           lager:info("6"),
+prot_iterator({rec,{atom,_Num,CName}, RecContent} , {TbName,RName,Num,Special,Erecname}) ->
   db_utils:ets_insert(RName, {CName,Num}),
   lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, RecContent);
-prot_iterator({continue, {atom,_Num,CName}}, {TbName,RName,Num,Special,Erecname}) ->    lager:info("7"),
+prot_iterator({continue, {atom,_Num,CName}}, {TbName,RName,Num,Special,Erecname}) ->
   Line = db_utils:ets_lookup(RName, CName),
   db_utils:add_row(TbName,Num,{continue,Line}),
   {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({'or', Content}, {TbName,RName,Num,Special,Erecname}) ->     lager:info("8"),
+prot_iterator({'or', Content}, {TbName,RName,Num,Special,Erecname}) ->
   {NTbName, NRName,NNum, _NSpecial, _Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, Content),
   {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname};
-prot_iterator({par,Content}, {TbName,RName,Num,Special,Erecname}) ->  lager:info("9"),
+prot_iterator({par,Content}, {TbName,RName,Num,Special,Erecname}) ->
   {NTbName, NRName,NNum, NSpecial,Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num+1,Special, Erecname}, Content),
   db_utils:add_row(TbName,Num,{choice,NSpecial}),
   {NTbName, NRName,NNum, [],Erecname};
-prot_iterator({'and', Content}, {TbName,RName,Num,Special,Erecname}) ->  lager:info("10"),
+prot_iterator({'and', Content}, {TbName,RName,Num,Special,Erecname}) ->
   {NTbName, NRName,NNum, _NSpecial, Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special,Erecname}, Content),
   {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname};
-prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname}) ->   lager:info("11"),
+prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname}) ->
   {econtinue, CName} = db_utils:get_row(TbName, Num-1),
   db_utils:ets_insert(RName, {CName, Num}),
   {TbName,RName,Num,Special,Erecname};
-prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname}) ->  lager:info("12"),
+prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname}) ->
   db_utils:add_row(TbName, Num, {econtinue, Erecname}),
   {TbName,RName,Num+1,Special,Erecname};
 prot_iterator(_, _) ->
