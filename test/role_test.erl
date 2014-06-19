@@ -74,26 +74,20 @@ prot_iterator_test() ->
 
 mnesia_data_retrive_test() ->
 	lager:start(),
-	application:set_env(mnesia, dir, "db"),
 
-	{ok,Data} = file:read_file("../resources/client.scr"),
+
+    
+    {ok,Data} = file:read_file("../resources/client.scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun role:mytokens/1}]),
 	{ok,_Scr} = scribble:parse(Final),
 	
-    mnesia:create_schema([node()]),
-			lager:info("Schmea"),
-
-	application:start(mnesia),
-		lager:info("Mnesia [Started]"),
 	
-    Mesae = mnesia:create_table(prova, [
-                        {record_name,row},
-                        {attributes, record_info(fields, row)},
-                        {ram_copies, [node()]}]),
-			lager:info("table ~p",[Mesae]),
-
-    mnesia:wait_for_tables([prova], infinity),
-			lager:info("wait for atabl"),
+  db_utils:install(node(),"db"),
+  case db_utils:get_table(prova) of
+    {created, TbName} -> ok;
+    {exists, TbName} -> ok;
+    {error, Reason} -> lager:error("~p",[Reason])
+  end,
 
 	lager:info("Mnesia create correctly"),
    
