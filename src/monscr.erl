@@ -289,9 +289,16 @@ spawn_role(Role, {Prot, RSup, Acc}) ->
   Result = case Role#lrole.ref of
     undefined  ->
       New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
-      New_role_data = data_utils:role_data_create(New_spec, undef, enf),
+      New_role_data = data_utils:role_data_create(New_spec, undef, undef),
       {ok,RoleId} =  role_sup:start_child(RSup, New_role_data),
-      lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
+
+      %Check if the role has started correctly if not skip the insertion and display log
+      %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
+      case role:get_init_state(RoleId)of
+        {ok} ->   lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
+        Error ->  lager:error("Error starting Role, Reason: ~p",[Error]), Acc
+      end;
+
     _ -> lager:info("[~p] already added NOT adding it again",[Role]),
       Acc
   end,

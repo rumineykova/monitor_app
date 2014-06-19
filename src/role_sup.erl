@@ -44,7 +44,7 @@ start_link(Args)->
 %% ====================================================================
 init(_Argss) ->
     AChild = {fake_id,{role,start_link,[]},
-	      permanent,infinity,worker,[role]},
+      transient,infinity,worker,[role]},
     {ok,{{simple_one_for_one,5,60}, [AChild]}}.
 
 %% ====================================================================

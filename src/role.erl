@@ -13,7 +13,7 @@
 %% ====================================================================
 %% API Exports
 %% ====================================================================
--export([start_link/1, send/4, 'end'/1, join/3, create/2, cancel/2]).
+-export([start_link/1, send/4, 'end'/1, join/3, create/2, cancel/2, get_init_state/1]).
 -compile(export_all).
 
 -define(USER,  <<"test">>).
@@ -38,7 +38,8 @@ join(Name,Protocol,Role) ->
 send(Name, Destination, Signature, Content) ->
 	gen_server:cast(Name, {send,Destination, Signature, Content}).
 
-
+get_init_state(Name)->
+  gen_server:call(Name, {init_state}).
 
 
 %=============================================================================================================================================================
@@ -94,7 +95,8 @@ init(State) ->
     {error, _Reason} -> erlang:exit()
   end,
 
-  ok = check_signatures(Role, State#role_data.spec#spec.funcs),
+  St = check_signatures(Role, State#role_data.spec#spec.funcs),
+
 
   Connection = rbbt_utils:connect(?USER, ?PWD, ?HOST),
   Channel = rbbt_utils:open_channel(Connection),
@@ -110,7 +112,7 @@ init(State) ->
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec}]),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
 
 	{ok, NArgs}.
 
@@ -160,6 +162,16 @@ handle_call({create,_Protocol},_From,State)->
   NState = data_utils:role_data_update(conn, State, Conn),
 
 	{reply,ok,NState};
+
+handle_call({init_state}, _From, State)->
+
+  %% Similar to wait in  posix the process is alive until someone read that the has been an error
+  %% If an error is the response then the process ends itself, if not continues as normal
+
+  case State#role_data.state of
+    {ok} -> {reply, {ok}, State};
+    {error, R} = K ->   {stop,R,K,State}
+  end;
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

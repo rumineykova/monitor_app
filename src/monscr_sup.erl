@@ -24,6 +24,6 @@ start_link() ->
 
 init([]) ->
 	AChild = {monscr,{monscr,start_link,[[]]},
-			  permanent,infinity,worker,[monscr]},
+    transient,infinity,worker,[monscr]},
     {ok, { {one_for_one, 5, 60}, [AChild]} }.
 

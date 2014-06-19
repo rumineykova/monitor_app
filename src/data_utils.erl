@@ -108,6 +108,8 @@ role_data_update_mult(Rdata, ValList) when is_list(ValList) ->
             end, Rdata, ValList).
 
 
+role_data_update(state, Rdata, Val) ->
+  Rdata#role_data{ state = Val };
 role_data_update(exc, Rdata, Val) ->
   Rdata#role_data{ exc = Val };
 role_data_update(conn, Rdata, Val) ->

@@ -1,4 +1,9 @@
 
+
+%%
+%% Monscr related structures
+%% ---------------------------------------------------
+
 -record(internal,{main_sup,
 		regp = [],
 		prot_sup = []}
@@ -20,9 +25,15 @@
 		func}
 ).
 
+
+%%
+%% Role related structures
+%% ---------------------------------------------------
+
 -record(role_data,{spec,
 		conn,
-		exc}
+		exc,
+    state}
 ).
 
 -record(spec,{protocol, 
@@ -45,6 +56,11 @@
 -record(exc,{state,
 		count}
 ).
+
+
+%%
+%% Database realted structures
+%% -----------------------------------------------------
 
 -record(row, {num, 
 		inst}
