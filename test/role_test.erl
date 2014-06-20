@@ -18,34 +18,33 @@
 %% ====================================================================
 
 
+start_test()->
+	lager:start(),
 
-%start_test()->
-%	lager:start(),
-%	
-%	application:set_env(mnesia, dir, "../db/"),
-%
-%	    mnesia:create_schema([node()]),
-%			lager:info("Schmea"),
-%
-%	application:start(mnesia),
-%		lager:info("Mnesia [Started]"),
-%	
-%    Mesae = mnesia:create_table(prova, [
-%                       {record_name,row}, 
-%                        {attributes, record_info(fields, row)},
-%                        {ram_copies, [node()]}]),
-%			lager:info("table ~p",[Mesae]),
-%
-%    mnesia:wait_for_tables([prova], infinity),
-%			lager:info("wait for atabl"),
-%
-%	lager:info("Mnesia create correctly"),
-%
-%
-%	State = #role_data{ spec = #spec{protocol = test_protocol, role = seller, imp_ref = self(),funcs = []}},
-%	_Role = role:start_link(State),
-%	ok.
-%
+	application:set_env(mnesia, dir, "../db/"),
+
+	    mnesia:create_schema([node()]),
+			lager:info("Schmea"),
+
+	application:start(mnesia),
+		lager:info("Mnesia [Started]"),
+
+    Mesae = mnesia:create_table(prova, [
+                       {record_name,row},
+                        {attributes, record_info(fields, row)},
+                        {ram_copies, [node()]}]),
+			lager:info("table ~p",[Mesae]),
+
+    mnesia:wait_for_tables([prova], infinity),
+			lager:info("wait for atabl"),
+
+	lager:info("Mnesia create correctly"),
+
+
+	State = #role_data{ spec = #spec{protocol = bid_sebay, role = client, imp_ref = self(),funcs = []}},
+	_Role = role:start_link(State),
+	ok.
+
 prot_iterator_test() ->
 	lager:start(),
 	
@@ -275,6 +274,9 @@ loop_pong(Channel,Q,Count) ->
 				  loop_pong(Channel,Q,Count+1)
           end.
 
+%% ====================================================================
+%% Auxiliar functions
+%% ====================================================================
 
 
 mytokens(Word) ->

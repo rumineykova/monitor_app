@@ -121,5 +121,5 @@ ets_lookup(Mer, CName)->
   [{_,Line}] = ets:lookup(Mer,CName),
   Line.
 
-ets_insert(TbName, Content) ->
+ets_insert(TbName, Content) when is_tuple(Content) ->
   ets:insert(TbName, Content).

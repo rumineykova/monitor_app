@@ -3,6 +3,7 @@
 
 
 -module(sup_role_sup_test).
+-include_lib("eunit/include/eunit.hrl").
 
 %% ====================================================================
 %% API functions

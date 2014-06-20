@@ -13,7 +13,7 @@
 %% API
 -export([prot_sup_create/3, prot_sup_update/3, prot_sup_update_mult/2, prot_sup_add_role/2]).
 -export([internal_create/3, internal_update/3, internal_add_regp/2, internal_update_mult/2]).
--export([lrole_create/4, lrole_update/3, lrole_update_mult/2, lrole_add_func/2]).
+-export([lrole_create/5, lrole_update/3, lrole_update_mult/2, lrole_add_func/2]).
 -export([role_data_create/3, role_data_update/3, role_data_update_mult/2]).
 -export([spec_create/8, spec_update/3, spec_update_mult/2]).
 -export([conn_create/6, conn_update/3, conn_update_mult/2]).
@@ -46,9 +46,10 @@ lrole_update(imp_ref, Lrole, Pid) ->
 lrole_update(funcs, Lrole, Funcs) ->
   Lrole#lrole{ funcs = Funcs }.
 
-lrole_create(Role, Roles, Pid, Funcs) when is_list(Funcs)->
+lrole_create(Role, Roles, Ref, Pid, Funcs) when is_list(Funcs)->
   #lrole{role = Role,
          roles = Roles,
+         ref = Ref,
          imp_ref=Pid,
          funcs=Funcs}.
 
@@ -75,7 +76,7 @@ prot_sup_update(ref, Psup, Ref) ->
 prot_sup_update(protocol,Psup, Prot) ->
   Psup#prot_sup{ protocol = Prot}.
 
-prot_sup_create(Prot, Ref, Roles) ->
+prot_sup_create(Prot, Ref, Roles) when is_list(Roles) ->
   #prot_sup{protocol = Prot,
             ref = Ref,
             roles = Roles

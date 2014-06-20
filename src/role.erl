@@ -77,7 +77,7 @@ init(State) ->
   Role = State#role_data.spec#spec.role,
 
   %TODO: This file should be downlaoded
-  {ok,Data} = file:read_file("resources/"++ atom_to_list(Role) ++ ".scr"),
+  {ok,Data} = file:read_file("../resources/"++ atom_to_list(Role) ++ ".scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
 
