@@ -13,7 +13,7 @@
 %% ====================================================================
 %% API Exports
 %% ====================================================================
--export([start_link/1, send/4, 'end'/1, join/3, create/2, cancel/2]).
+-export([start_link/1, send/4, 'end'/1, create/2, cancel/2]).
 -compile(export_all).
 
 %% ====================================================================
@@ -27,9 +27,6 @@ create(Name, Protocol)->
 
 cancel(Name,Reason)->
     ok = gen_server:call(Name,{Reason}).
-
-join(Name,Protocol,Role) ->
-	gen_server:call(Name,{join,Protocol,Role}).
 
 send(Name, Destination, Signature, Content) ->
 	gen_server:cast(Name, {send,Destination, Signature, Content}).
@@ -487,7 +484,6 @@ find_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
   Result :: {ok, term()}.
 %% ====================================================================
 translate_parsed_to_mnesia(Role,Content)->
-    lager:info("fucking ets"),
     Mer = db_utils:ets_create(Role, [set]),
     lager:info("[~p] ~p",[self(),Mer]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),

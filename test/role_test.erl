@@ -9,7 +9,6 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([]).
 -compile(export_all).
 
 -compile([{parse_transform, lager_transform}]).
@@ -17,21 +16,9 @@
 %% Internal functions
 %% ====================================================================
 
-
 start_test()->
-	lager:start(),
-
-	application:set_env(mnesia, dir, "../db/"),
-  mnesia:create_schema([node()]),
-
-	application:start(mnesia),
-
-  Mesae = mnesia:create_table(prova, [
-    {record_name,row},
-    {attributes, record_info(fields, row)},
-    {ram_copies, [node()]}]),
-
-  mnesia:wait_for_tables([prova], infinity),
+  db_utils:install(node(), "../db/"),
+  db_utils:get_table(prova),
 
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, self(), [], undef, undef),
 	State = #role_data{ spec = Spec },
@@ -66,11 +53,49 @@ wait_for_confirmation_test()->
   Roles = [me],
 
   Ok = role:wait_for_confirmation(Roles),
-  ?assertEqual(Ok,ok).
+  ?assertEqual(ok,Ok).
 
 
 
+create_conersation_test()->
+  db_utils:install(node(), "../db/"),
+  db_utils:get_table(prova),
 
+  Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, self(), [], undef, undef),
+  State = #role_data{ spec = Spec },
+  {ok, Return} = role:start_link(State),
+  ?assertEqual(true, is_pid(Return)),
+
+  role:create(Return, bid_sebay),
+  timer:sleep(3500),
+  %TODO: fix this
+
+  Return1 = receive
+             {'$gen_call',_,{timeout}} -> ok ;
+             _ -> error
+           end,
+  ?assertEqual(ok, Return1).
+
+
+%Todo this does not work
+%ready_test()->
+%  db_utils:install(node(), "../db/"),
+%  db_utils:get_table(prova),
+%
+%  Spec = data_utils:spec_create(bid_sebay, client, [], undef, self(), [], undef, undef),
+%  State = #role_data{ spec = Spec },
+%  {ok, Return} = role:start_link(State),
+%  ?assertEqual(true, is_pid(Return)),
+%
+%  %TODO: what happends if wrong protocol is specified
+%  role:create(Return, bid_sebay),
+%  %TODO: fix this
+%
+%  Return1 = receive
+%             M -> M;
+%             _ -> error
+%           end,
+%  ?assertEqual(ok, Return1).
 
 
 %% ====================================================================

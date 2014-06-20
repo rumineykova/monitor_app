@@ -62,7 +62,7 @@ consumer_test()->
   rbbt_utils:publish_msg(Chn,test,t1,test),
 
   Return = receive
-     {'$gen_cast',test}-> ok;
+     {'$gen_cast',test} -> ok;
       _ -> error
   end,
 

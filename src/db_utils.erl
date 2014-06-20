@@ -99,7 +99,7 @@ update_row(TableName, CodeLine, NewContent)->
 
   case mnesia:transaction(F) of
     {aborted, Reason} -> lager:info("aborted: ~p",[Reason]);
-    {atomic, ResultOfFun} -> lager:info("atomic; ~p",[ResultOfFun])
+    {atomic, _ResultOfFun} -> ok
   end.
 
 
