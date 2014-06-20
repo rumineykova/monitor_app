@@ -93,7 +93,7 @@ init(State) ->
   User = <<"test">>,
 	Pwd = <<"test">>,
 
-  Connection = rbbt_utils:connect(User, Pwd, "94.23.60.219"),
+  Connection = rbbt_utils:connect("94.23.60.219", User, Pwd),
   Channel = rbbt_utils:open_channel(Connection),
 
   lager:info("[~p] [AMQP] connection stablished~n",[self()]),
@@ -183,7 +183,7 @@ handle_cast({create, Src, Rand},State) ->
   Chn = State#role_data.conn#conn.active_chn,
 
   %Declare the queue an bind it to the new exchange
-  Q = rbbt_utils:declare_q(State, BName),
+  Q = rbbt_utils:declare_q(Chn, BName),
 	rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
 
   %Spawn a new consumer for the new queue
@@ -204,7 +204,7 @@ handle_cast({confirm,Role},State) ->
 	NRoles = lists:delete(Role,Roles),
 
   lager:info("[~p] Wait for confirmation ~p",[self(), NRoles]),
-	case wait_for_confirmation(NRoles,State) of
+	case wait_for_confirmation(NRoles) of
         true -> lager:info("[~p] All roles confirmed",[self()]),
                 gen_server:cast(self(),{ready}),
                 bcast_msg_to_roles(others,State,{ready});
@@ -573,18 +573,18 @@ prot_iterator(_, _) ->
 %% wait_for_confirmation/2
 %% ====================================================================
 %% @doc
--spec wait_for_confirmation(Roles :: list(), State :: term()) -> Result when
+-spec wait_for_confirmation(Roles :: list()) -> Result when
   Result :: true
   | false.
 %% ====================================================================
-wait_for_confirmation([],_State)->
+wait_for_confirmation([])->
 	true;
-wait_for_confirmation(Roles,State) ->
+wait_for_confirmation(Roles) ->
 	receive
 		{'$gen_cast',{confirm,Role}} -> 
             lager:info("[~p] Confirm message from ~p",[self(),Role]),
             NRoles = lists:delete(Role,Roles),
-			wait_for_confirmation(NRoles,State);
+			wait_for_confirmation(NRoles);
         Msg -> lager:error("[~p] Unkonw message receive instaed of confirm,~p",[self(),Msg])
 	after 3000 ->
         lager:info("[~p] Confirmation timeout",[self()]),

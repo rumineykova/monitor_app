@@ -37,6 +37,9 @@ lrole_test()->
   Lr = data_utils:lrole_create(rl,rls,ref,impref, [funcs]),
   ?assertEqual(#lrole{ role = rl, roles = rls, ref = ref, imp_ref = impref, funcs = [funcs]}, Lr),
 
+  Lr2 = data_utils:lrole_add_func(Lr,fc1),
+  ?assertEqual(#lrole{ role = rl, roles = rls, ref = ref, imp_ref = impref, funcs = [fc1, funcs]}, Lr2),
+
   Lr1 = data_utils:lrole_update_mult(Lr, [{role, rl1},{roles, rls1},{ref, rf1},{imp_ref, mprf1},{funcs, [fc1]}]),
   ?assertEqual(#lrole{role = rl1, roles = rls1, ref = rf1, imp_ref = mprf1, funcs = [fc1]}, Lr1).
 
@@ -44,6 +47,9 @@ lrole_test()->
 prot_sup_test()->
   Psup = data_utils:prot_sup_create(prot, ref, [rl]),
   ?assertEqual(#prot_sup{ protocol = prot, ref = ref, roles = [rl]}, Psup),
+
+  Psup2 = data_utils:prot_sup_add_role(Psup, rl1),
+  ?assertEqual(#prot_sup{ protocol = prot, ref = ref, roles = [rl1, rl]}, Psup2),
 
   Psup1 = data_utils:prot_sup_update_mult(Psup, [{protocol, pt1},{ref, rf1},{roles, [rl1]}]),
   ?assertEqual(#prot_sup{ protocol = pt1, ref = rf1, roles = [rl1]}, Psup1).
@@ -97,7 +103,7 @@ internal_test()->
   Int5 = data_utils:internal_update(main_sup, Int, '<0.70.0>'),
   ?assertEqual(#internal{ main_sup = '<0.70.0>', regp = [], prot_sup = []},Int5),
 
-  Int4 = data_utils:internal_update(prot_sup,Int2,#prot_sup{}),
+  Int4 = data_utils:internal_update_mult(Int2,[{prot_sup, #prot_sup{}}]),
   ?assertEqual(#internal{ main_sup = '<0.66.0>', regp = ['<0.67.0>'], prot_sup = #prot_sup{}}, Int4).
 
 

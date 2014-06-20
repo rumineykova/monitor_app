@@ -1,0 +1,148 @@
+2014-06-20 15:16:42 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.94.0>
+    registered_name: []
+    exception exit: {{badarg,[{erlang,register,[monscr,<0.254.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 367
+  neighbours:
+2014-06-20 15:21:35 =ERROR REPORT====
+** Generic server <0.199.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.199.0>,role_sup},simple_one_for_one,[{child,undefined,fake_id,{role,start_link,[]},permanent,infinity,worker,[role]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[[<0.200.0>,{role_data,{spec,bid_sebay,client,[sebay],undef,<0.90.0>,[],undef,undef},none,none}]],[],[],[],[],[],[],[]}}},5,60,[],role_sup,empty}
+** Reason for termination == 
+** {badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:21:35 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:role_sup/1
+    pid: <0.199.0>
+    registered_name: []
+    exception exit: {{badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 1076
+  neighbours:
+2014-06-20 15:21:35 =ERROR REPORT====
+** Generic server <0.94.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.94.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[[<0.95.0>,none]]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:21:35 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.94.0>
+    registered_name: []
+    exception exit: {{badarg,[{erlang,register,[monscr,<0.257.0>],[]},{monscr,init,1,[{file,"src/monscr.erl"},{line,61}]},{gen_server,init_it,6,[{file,"gen_server.erl"},{line,304}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 403
+  neighbours:
+2014-06-20 15:22:56 =ERROR REPORT====
+** Generic server <0.197.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.197.0>,role_sup},simple_one_for_one,[{child,undefined,fake_id,{role,start_link,[]},permanent,infinity,worker,[role]}],undefined,5,60,[],role_sup,empty}
+** Reason for termination == 
+** {'function not exported',[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:22:56 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:role_sup/1
+    pid: <0.197.0>
+    registered_name: []
+    exception exit: {{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 987
+    stack_size: 27
+    reductions: 357
+  neighbours:
+2014-06-20 15:22:56 =ERROR REPORT====
+** Generic server <0.92.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.92.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],undefined,5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {'function not exported',[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:22:56 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.92.0>
+    registered_name: []
+    exception exit: {{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 987
+    stack_size: 27
+    reductions: 365
+  neighbours:
+2014-06-20 15:22:56 =ERROR REPORT====
+** Generic server <0.199.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.199.0>,role_sup},simple_one_for_one,[{child,undefined,fake_id,{role,start_link,[]},permanent,infinity,worker,[role]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[[<0.200.0>,{role_data,{spec,bid_sebay,client,[sebay],undef,<0.90.0>,[],undef,undef},none,none}]],[],[],[],[],[],[],[]}}},5,60,[],role_sup,empty}
+** Reason for termination == 
+** {'function not exported',[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:22:56 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:role_sup/1
+    pid: <0.199.0>
+    registered_name: []
+    exception exit: {{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 987
+    stack_size: 27
+    reductions: 1093
+  neighbours:
+2014-06-20 15:22:56 =ERROR REPORT====
+** Generic server <0.94.0> terminating 
+** Last message in was {'EXIT',<0.90.0>,{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}}
+** When Server state == {state,{<0.94.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[[<0.95.0>,none]]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {'function not exported',[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+2014-06-20 15:22:56 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.94.0>
+    registered_name: []
+    exception exit: {{undef,[{data_utils,lrole_create,[client,[sebay],<0.90.0>,[]],[]},{monscr,config_prot_roles,2,[{file,"src/monscr.erl"},{line,217}]},{lists,foldl,3,[{file,"lists.erl"},{line,1248}]},{monscr,internal_create_config,2,[{file,"src/monscr.erl"},{line,200}]},{monscr,config_protocol_imp,2,[{file,"src/monscr.erl"},{line,182}]},{monscr,handle_call,3,[{file,"src/monscr.erl"},{line,84}]},{gen_server,handle_msg,5,[{file,"gen_server.erl"},{line,585}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.90.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 987
+    stack_size: 27
+    reductions: 424
+  neighbours:

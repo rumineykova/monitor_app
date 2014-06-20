@@ -14,10 +14,10 @@
 %% API
 -export([declare_exc/4, declare_q/2, bind_q_to_exc/4, publish_msg/3, publish_msg/4,
          bind_to_global_exchange/3, subscribe/2, unsubscribe/2,
-         connect/3, open_channel/1]).
+         connect/3, open_channel/1,manual_recv/2, delete_q/2,delete_exc/2]).
 
 
-connect(User, Pwd, Host) ->
+connect(Host, User, Pwd) ->
   {ok, Connection} = amqp_connection:start(#amqp_params_network{username = User, password = Pwd, host=Host}),
   Connection.
 
@@ -29,10 +29,11 @@ open_channel(Con) ->
 %% Declarations
 %% =======================================================================
 
-declare_q(State, Name) ->
+declare_q(Chn,Name) when is_atom(Name) ->
+  declare_q(Chn, atom_to_binary(Name, utf8));
+declare_q(Chn, Name) when is_binary(Name)->
   #'queue.declare_ok'{queue = Q}
-    = amqp_channel:call(State#role_data.conn#conn.active_chn,
-                        #'queue.declare'{queue=Name,auto_delete=true}),
+    = amqp_channel:call(Chn, #'queue.declare'{queue=Name, auto_delete=true}),
   Q.
 
 
@@ -51,9 +52,13 @@ declare_exc(Chn, Name, Type, Delete) when is_binary(Name)->
 %% Bindings
 %% =================================================================
 
-bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_atom(Rkey)->
+bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_atom(Exchange), is_atom(Rkey)->
+  bind_q_to_exc(Queue, atom_to_binary(Exchange,utf8), atom_to_binary(Rkey, utf8), Chn);
+bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_atom(Exchange), is_binary(Rkey)->
+  bind_q_to_exc(Queue, atom_to_binary(Exchange,utf8), Rkey, Chn);
+bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_binary(Exchange), is_atom(Rkey)->
   bind_q_to_exc(Queue, Exchange, atom_to_binary(Rkey, utf8), Chn);
-bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_binary(Rkey)->
+bind_q_to_exc(Queue, Exchange, Rkey, Chn) when is_binary(Exchange), is_binary(Rkey)->
   Binding = #'queue.bind'{queue = Queue,
     exchange    = Exchange,
     routing_key = Rkey},
@@ -130,8 +135,29 @@ publish_msg(Chn, Exc, Rkey, Msg) when is_binary(Exc), is_binary(Rkey)->
                     #amqp_msg{payload = bert:encode(Msg)}).
 
 
+
+manual_recv(Channel, Queue)->
+  Get = #'basic.get'{queue = Queue, no_ack = true},
+  {#'basic.get_ok'{}, Content} = amqp_channel:call(Channel, Get),
+  #amqp_msg{payload = Payload} = Content,
+  bert:decode(Payload).
+
+
+
+delete_exc(Channel, Exchange) when is_atom(Exchange) ->
+  delete_exc(Channel, atom_to_binary(Exchange,utf8));
+delete_exc(Channel, Exchange) when is_binary( Exchange) ->
+  Delete = #'exchange.delete'{exchange = Exchange},
+  #'exchange.delete_ok'{} = amqp_channel:call(Channel, Delete).
+
+delete_q(Channel, Queue) when is_atom(Queue)->
+  delete_q(Channel, atom_to_binary(Queue,utf8));
+delete_q(Channel, Queue) when is_binary(Queue)->
+  Delete = #'queue.delete'{queue = Queue},
+  #'queue.delete_ok'{} = amqp_channel:call(Channel, Delete).
+
 %%
-%% Messgae publishing
+%% Subscribing publishing
 %% =================================================================
 
 subscribe(Chn, Q) ->

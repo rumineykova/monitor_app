@@ -214,11 +214,11 @@ internal_create_config(_State,_Other) ->
 %% ====================================================================
 config_prot_roles({Prot,Role,Roles}, {Pid,Protocol_sup_list}) ->
   Return = case lists:keyfind(Prot, 1, Protocol_sup_list) of
-    false -> NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
+    false -> NewRole = data_utils:lrole_create(Role, Roles, undefined, Pid, []),
              El = data_utils:prot_sup_create(Prot, undef, [NewRole]),
              [El];
     Sup_intance ->
-      NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
+      NewRole = data_utils:lrole_create(Role, Roles, undef,Pid, []),
       Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
       lists:keyreplace(Prot, 1, Protocol_sup_list, Updated_prot_sup)
   end,

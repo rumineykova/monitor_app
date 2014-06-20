@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(db_utils_test).
 -author("aku").
--
-include_lib("eunit/include/eunit.hrl").
+
+-include_lib("eunit/include/eunit.hrl").
 
 -compile([{parse_transform, lager_transform}]).
 
@@ -30,6 +30,8 @@ db_usage_test()->
   {created, TblName} = db_utils:get_table(test_table),
 
   role:translate_parsed_to_mnesia(TblName,Scr),
+
+  db_utils:print_db(TblName,[0]),
 
   Insts = [{to,request_item,sebay},
     {from,response_item,sebay},
