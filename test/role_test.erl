@@ -56,7 +56,7 @@ wait_for_confirmation_test()->
   ?assertEqual(ok,Ok).
 
 
-
+%
 create_conersation_test()->
   db_utils:install(node(), "../db/"),
   db_utils:get_table(prova),
@@ -66,14 +66,15 @@ create_conersation_test()->
   {ok, Return} = role:start_link(State),
   ?assertEqual(true, is_pid(Return)),
 
-  role:create(Return, bid_sebay),
-  timer:sleep(3500),
+  ok = role:create(Return, bid_sebay),
   %TODO: fix this
 
+  lager:info("waiting for timeout"),
   Return1 = receive
-             {'$gen_call',_,{timeout}} -> ok ;
-             _ -> error
+              {'$gen_call',_,{timeout}} -> ok ;
+              _ -> error
            end,
+
   ?assertEqual(ok, Return1).
 
 

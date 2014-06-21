@@ -26,7 +26,7 @@ create(Name, Protocol)->
 	gen_server:cast(Name,{'end',some}).
 
 cancel(Name,Reason)->
-    ok = gen_server:call(Name,{Reason}).
+    ok = gen_server:cast(Name,{Reason}).
 
 send(Name, Destination, Signature, Content) ->
 	gen_server:cast(Name, {send,Destination, Signature, Content}).
