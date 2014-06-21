@@ -16,6 +16,14 @@
 %% Internal functions
 %% ====================================================================
 
+
+
+-define(USER,<<"test">>).
+-define(PWD,<<"test">>).
+-define(HOST,"94.23.60.219").
+
+
+
 start_test()->
   db_utils:install(node(), "../db/"),
   db_utils:get_table(prova),
@@ -48,18 +56,17 @@ prot_iterator_test() ->
 
 wait_for_confirmation_test()->
 
-  self() ! {confirm, me},
+  self() ! {'$gen_cast',{confirm,me}},
 
   Roles = [me],
 
   Ok = role:wait_for_confirmation(Roles),
-  ?assertEqual(ok,Ok).
+  ?assertEqual(true,Ok).
 
 
-%
 create_conersation_test()->
   db_utils:install(node(), "../db/"),
-  db_utils:get_table(prova),
+  db_utils:get_table(prova1),
 
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, self(), [], undef, undef),
   State = #role_data{ spec = Spec },
@@ -67,36 +74,66 @@ create_conersation_test()->
   ?assertEqual(true, is_pid(Return)),
 
   ok = role:create(Return, bid_sebay),
-  %TODO: fix this
 
-  lager:info("waiting for timeout"),
   Return1 = receive
-              {'$gen_call',_,{timeout}} -> ok ;
+              {'$gen_cast',{timeout}} -> ok;
               _ -> error
            end,
+
+  role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
 
-%Todo this does not works
-%ready_test()->
-%  db_utils:install(node(), "../db/"),
-%  db_utils:get_table(prova),
 %
-%  Spec = data_utils:spec_create(bid_sebay, client, [], undef, self(), [], undef, undef),
-%  State = #role_data{ spec = Spec },
-%  {ok, Return} = role:start_link(State),
-%  ?assertEqual(true, is_pid(Return)),
-%
-%  %TODO: what happends if wrong protocol is specified
-%  role:create(Return, bid_sebay),
-%  %TODO: fix this
-%
-%  Return1 = receive
-%             M -> M;
-%             _ -> error
-%           end,
-%  ?assertEqual(ok, Return1).
+ready_test()->
+  db_utils:install(node(), "../db/"),
+  db_utils:get_table(prova2),
+
+
+  Spec = data_utils:spec_create(tete_client, tete, [], undef, self(), [], undef, undef),
+  %Spec = data_utils:spec_create(bid_sebay, client, [], undef, self(), [], undef, undef),
+
+  State = #role_data{ spec = Spec },
+  {ok, Return} = role:start_link(State),
+
+  ?assertEqual(true, is_pid(Return)),
+
+  role:create(Return, bid_sebay),
+
+  Return1 = receive
+              {'$gen_cast',{callback,ready,{ready}}} -> ok;
+              _ -> error
+           end,
+  role:stop(Return),
+
+  ?assertEqual(ok, Return1).
+
+
+send_message_test() ->
+  db_utils:install(node(), "../db/"),
+  db_utils:get_table(prova2),
+
+  Spec = data_utils:spec_create(sing_test, sender, [], undef, self(), [], undef, undef),
+
+  State = #role_data{ spec = Spec },
+  {ok, Return} = role:start_link(State),
+
+  ?assertEqual(true, is_pid(Return)),
+
+  role:create(Return, bid_sebay),
+  %TODO: fix this
+
+  Return1 = receive
+              {'$gen_cast',{callback,ready,{ready}}} -> ok;
+              _ -> error
+            end,
+
+  role:send(Return, recv, request_item,jejje),
+
+  role:stop(Return),
+
+  ?assertEqual(ok, Return1).
 
 
 %% ====================================================================

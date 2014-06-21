@@ -1,0 +1,17 @@
+local protocol tete_client at client(role tete, role pepe) {
+	request_item(string) to pepe;
+	rec checkPoint{
+		response_item(string) from pepe;
+		choice at tete{
+			makebid() to pepe;
+			send_newPrice(int) to pepe;
+			choice at pepe{
+				lower() from pepe;
+				continue checkPoint;
+			}or{
+				accept() from pepe;
+				send_update(string) from pepe;
+			}
+		}or{
+			nobid() to pepe;
+}}}

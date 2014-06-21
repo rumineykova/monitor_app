@@ -27,23 +27,21 @@ install(Nodes, Path)->
   application:set_env(mnesia, dir, Path),
 
   mnesia:create_schema([Nodes]),
-  lager:info("[~p][install] Schmea created",[?MODULE]),
+  %lager:info("[~p][install] Schmea created",[?MODULE]),
 
-  application:start(mnesia),
-  lager:info("[~p][install] Mnesia started",[?MODULE]).
+  application:start(mnesia).
+  %lager:info("[~p][install] Mnesia started",[?MODULE]).
 
 
 
 get_table(TableName)->
-  lager:info("[~p]",[?MODULE]),
   %When create gets emptied
-  lager:info("[~p][get_table] Mnesia started",[?MODULE]),
-              mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
-                                              {record_name,row},
-                                              {ram_copies, [node()]}
-                                             ]),
-              mnesia:wait_for_tables([TableName], infinity),
-              {created, TableName}.
+  mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
+    {record_name,row},
+    {ram_copies, [node()]}
+  ]),
+
+  mnesia:wait_for_tables([TableName], infinity), {created, TableName}.
   %TODO: recover without filling
   %case exist_table(TableName, mnesia:system_info(tables)) of
   %  {false} ->    lager:info("[~p][get_table] Mnesia started",[?MODULE]),

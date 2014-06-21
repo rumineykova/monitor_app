@@ -13,7 +13,7 @@
 %% ====================================================================
 %% API Exports
 %% ====================================================================
--export([start_link/1, send/4, 'end'/1, create/2, cancel/2]).
+-export([start_link/1, send/4, 'end'/1, create/2, cancel/2, stop/1]).
 -compile(export_all).
 
 %% ====================================================================
@@ -31,8 +31,8 @@ cancel(Name,Reason)->
 send(Name, Destination, Signature, Content) ->
 	gen_server:cast(Name, {send,Destination, Signature, Content}).
 
-
-
+stop(Name)->
+  gen_server:cast(Name,{stop}).
 
 %=============================================================================================================================================================
 %=============================================================================================================================================================
@@ -51,7 +51,7 @@ send(Name, Destination, Signature, Content) ->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(State) ->
-  lager:warning("[~p] Start_links params ~p",[self(),State]),
+  %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, NState, []).
 
@@ -78,8 +78,6 @@ init(State) ->
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
 
-  lager:info("[~p] Protocol ~p  parsed",[self(),Scr]),
-
 
   {ok, NumLines} = case db_utils:get_table(Role) of
     {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
@@ -93,8 +91,6 @@ init(State) ->
   Connection = rbbt_utils:connect("94.23.60.219", User, Pwd),
   Channel = rbbt_utils:open_channel(Connection),
 
-  lager:info("[~p] [AMQP] connection stablished~n",[self()]),
-	
 	Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
 								  Channel,
 								  Role),
@@ -106,7 +102,7 @@ init(State) ->
   NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec}]),
 
-	{ok, NArgs}.
+  {ok, NArgs}.
 
 
 
@@ -129,8 +125,6 @@ init(State) ->
 	Reason :: term().
 %% ====================================================================
 handle_call({create,_Protocol},_From,State)->
-  lager:info("[~p] Create",[self()]),
-
   % Generate aleatori number for private conversations
   Rand = [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)],
 
@@ -146,14 +140,11 @@ handle_call({create,_Protocol},_From,State)->
                          State#role_data.conn#conn.active_exc,
                          {create,State#role_data.spec#spec.role,Rand}),
 
-                  
-  lager:info("[~p] Old channel close",[self()]),
-
   % Update State with the new data
   Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
   NState = data_utils:role_data_update(conn, State, Conn),
 
-	{reply,ok,NState};
+  {reply,ok,NState};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -294,6 +285,8 @@ handle_cast({terminated,_Prot},State)->
 handle_cast({cancel,Prot},State)->
 	gen_server:cast(self(),{'end',Prot}),
   {noreply, State};
+handle_cast({stop},State)->
+  {stop, normal, State};
 handle_cast(_Request, State) ->
     {noreply, State}.
 
@@ -322,10 +315,12 @@ handle_info(_Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, State) ->
-	amqp_channel:close(State#role_data.conn#conn.active_chn),
-	%% Close the connection
-	amqp_connection:close(State#role_data.conn#conn.connection),
-    ok.
+  rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
+  %% Close the connection
+
+  amqp_channel:close(State#role_data.conn#conn.active_chn),
+  amqp_connection:close(State#role_data.conn#conn.connection),
+  ok.
 
 
 %% code_change/3
@@ -338,6 +333,7 @@ terminate(_Reason, State) ->
 %% ====================================================================
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
 
 
 %% ====================================================================
