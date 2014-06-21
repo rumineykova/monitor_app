@@ -4,7 +4,7 @@
 .project
 .settings
 .DS_STORE
-logs
+log
 deps
 *.iml
 *.o

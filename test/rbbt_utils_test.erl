@@ -55,7 +55,7 @@ consumer_test()->
   Q = rbbt_utils:declare_q(Chn,<<"t1">>),
   rbbt_utils:declare_exc(Chn,test,<<"direct">>,true),
 
-  rbbt_utils:bind_q_to_exc(Q, <<"test">>, t1, Chn),
+  rbbt_utils:bind_q_to_exc(Q, test, <<"t1">>, Chn),
 
   Pid = role_consumer:start_link({Chn, Q, self()}),
 
@@ -71,3 +71,24 @@ consumer_test()->
   ?assertEqual(ok, Return).
 
 
+coverage_test()->
+  Conn = rbbt_utils:connect(?HOST, ?USER, ?PWD),
+
+  Chn = rbbt_utils:open_channel(Conn),
+
+  rbbt_utils:declare_exc(Chn,bid,<<"direct">>,false),
+
+  Q = rbbt_utils:declare_q(Chn,<<"t1">>),
+
+  %rbbt_utils:bind_to_global_exchange(bid,Chn,<<"t1">>),
+  rbbt_utils:bind_q_to_exc(Q, bid, <<"t1">>, Chn),
+
+  rbbt_utils:publish_msg(Chn, bid, <<"t1">>, test),
+
+  Return = rbbt_utils:manual_recv(Chn, Q),
+
+
+  rbbt_utils:delete_q(Chn, t1),
+  rbbt_utils:delete_exc(Chn, bid),
+
+  ?assertEqual(test,Return).

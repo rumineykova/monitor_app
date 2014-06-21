@@ -59,13 +59,13 @@ get_table(TableName)->
   %            {error, Reason}
   %end.
 
-exist_table(_Tbl,[])->
-  {false};
-exist_table(Tbl,[T|R])->
-  case T of
-    T when Tbl =:= T -> {true};
-    _ -> exist_table(Tbl,R)
-  end.
+%exist_table(_Tbl,[])->
+%  {false};
+%exist_table(Tbl,[T|R])->
+%  case T of
+%    T when Tbl =:= T -> {true};
+%    _ -> exist_table(Tbl,R)
+%   end.
 
 
 

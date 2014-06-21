@@ -403,3 +403,315 @@
     reductions: 5571
   neighbours:
     neighbour: [{pid,<0.224.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.146.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,536}]
+2014-06-21 00:44:29 =ERROR REPORT====
+** Generic server <0.120.0> terminating 
+** Last message in was {'$gen_cast',{confirm,client}}
+** When Server state == {role_data,{spec,bid_sebay,client,[sebay],undef,<0.72.0>,[],undef,15},{conn,<0.129.0>,<0.140.0>,undef,<<"client_726355">>,<<"bid_sebay_726355">>,<0.198.0>},undefined}
+** Reason for termination == 
+** {normal,{gen_server,call,[<0.72.0>,{timeout}]}}
+2014-06-21 00:44:29 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.120.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.72.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.72.0>]
+    messages: []
+    links: [<0.198.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5575
+  neighbours:
+    neighbour: [{pid,<0.198.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.120.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,538}]
+2014-06-21 00:52:37 =ERROR REPORT====
+** Generic server <0.121.0> terminating 
+** Last message in was {'$gen_cast',{confirm,client}}
+** When Server state == {role_data,{spec,bid_sebay,client,[sebay],undef,<0.73.0>,[],undef,15},{conn,<0.130.0>,<0.141.0>,undef,<<"client_726355">>,<<"bid_sebay_726355">>,<0.199.0>},undefined}
+** Reason for termination == 
+** {normal,{gen_server,call,[<0.73.0>,{timeout}]}}
+2014-06-21 00:52:37 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.121.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.73.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.73.0>]
+    messages: []
+    links: [<0.199.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5570
+  neighbours:
+    neighbour: [{pid,<0.199.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.121.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,536}]
+2014-06-21 00:55:26 =ERROR REPORT====
+** Generic server <0.121.0> terminating 
+** Last message in was {'$gen_cast',{confirm,client}}
+** When Server state == {role_data,{spec,bid_sebay,client,[sebay],undef,<0.73.0>,[],undef,15},{conn,<0.130.0>,<0.141.0>,undef,<<"client_726355">>,<<"bid_sebay_726355">>,<0.199.0>},undefined}
+** Reason for termination == 
+** {normal,{gen_server,call,[<0.73.0>,{timeout}]}}
+2014-06-21 00:55:26 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.121.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.73.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.73.0>]
+    messages: []
+    links: [<0.199.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5571
+  neighbours:
+    neighbour: [{pid,<0.199.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.121.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,536}]
+2014-06-21 00:59:18 =ERROR REPORT====
+** Generic server <0.77.0> terminating 
+** Last message in was {'EXIT',<0.73.0>,{timeout,{gen_server,call,[<0.73.0>,{timeout}]}}}
+** When Server state == {state,{<0.77.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[[<0.78.0>,none]],[]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.73.0>,{timeout}]}}
+2014-06-21 00:59:18 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:role_sup/1
+    pid: <0.203.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.73.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.73.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 1030
+  neighbours:
+2014-06-21 00:59:18 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.77.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.73.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.73.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 354
+  neighbours:
+2014-06-21 01:00:40 =ERROR REPORT====
+** Generic server <0.131.0> terminating 
+** Last message in was {'$gen_cast',{confirm,client}}
+** When Server state == {role_data,{spec,bid_sebay,client,[sebay],undef,<0.83.0>,[],undef,15},{conn,<0.140.0>,<0.151.0>,undef,<<"client_726355">>,<<"bid_sebay_726355">>,<0.209.0>},undefined}
+** Reason for termination == 
+** {normal,{gen_server,call,[<0.83.0>,{timeout}]}}
+2014-06-21 01:00:40 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.131.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.83.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.83.0>]
+    messages: []
+    links: [<0.209.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5567
+  neighbours:
+    neighbour: [{pid,<0.209.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.131.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,534}]
+2014-06-21 01:12:16 =ERROR REPORT====
+** Generic server <0.79.0> terminating 
+** Last message in was {'EXIT',<0.75.0>,{timeout,{gen_server,call,[<0.75.0>,{timeout}]}}}
+** When Server state == {state,{<0.79.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[[<0.80.0>,none]],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.75.0>,{timeout}]}}
+2014-06-21 01:12:16 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.79.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 358
+  neighbours:
+2014-06-21 01:13:48 =ERROR REPORT====
+** Generic server <0.79.0> terminating 
+** Last message in was {'EXIT',<0.75.0>,{timeout,{gen_server,call,[<0.75.0>,{timeout}]}}}
+** When Server state == {state,{<0.79.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[[<0.80.0>,none]],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.75.0>,{timeout}]}}
+2014-06-21 01:13:48 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.79.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 350
+  neighbours:
+2014-06-21 01:16:45 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.79.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 350
+  neighbours:
+2014-06-21 01:17:13 =ERROR REPORT====
+** Generic server <0.123.0> terminating 
+** Last message in was {'$gen_cast',{confirm,client}}
+** When Server state == {role_data,{spec,bid_sebay,client,[sebay],undef,<0.75.0>,[],undef,15},{conn,<0.132.0>,<0.143.0>,undef,<<"client_726355">>,<<"bid_sebay_726355">>,<0.201.0>},undefined}
+** Reason for termination == 
+** {normal,{gen_server,call,[<0.75.0>,{timeout}]}}
+2014-06-21 01:17:13 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.123.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: [<0.201.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5567
+  neighbours:
+    neighbour: [{pid,<0.201.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.123.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,534}]
+2014-06-21 01:19:23 =ERROR REPORT====
+** Generic server <0.288.0> terminating 
+** Last message in was {'EXIT',<0.287.0>,{timeout,{gen_server,call,[<0.85.0>,{timeout}]}}}
+** When Server state == {state,{<0.288.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[],[],[[<0.289.0>,none]],[],[],[],[],[]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.85.0>,{timeout}]}}
+2014-06-21 01:19:23 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.288.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.85.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [monscr,<0.85.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 350
+  neighbours:
+2014-06-21 01:19:39 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.79.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 350
+  neighbours:
+2014-06-21 01:19:39 =ERROR REPORT====
+** Generic server <0.205.0> terminating 
+** Last message in was {'EXIT',<0.75.0>,{timeout,{gen_server,call,[<0.75.0>,{timeout}]}}}
+** When Server state == {state,{<0.205.0>,role_sup},simple_one_for_one,[{child,undefined,fake_id,{role,start_link,[]},permanent,infinity,worker,[role]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[[<0.206.0>,{role_data,{spec,bid_sebay,client,[sebay],undef,<0.75.0>,[],undef,undef},none,none}]],[]}}},5,60,[],role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.75.0>,{timeout}]}}
+2014-06-21 01:19:39 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:role_sup/1
+    pid: <0.205.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 1039
+  neighbours:
+2014-06-21 01:19:39 =ERROR REPORT====
+** Generic server <0.278.0> terminating 
+** Last message in was {'EXIT',<0.277.0>,{timeout,{gen_server,call,[<0.75.0>,{timeout}]}}}
+** When Server state == {state,{<0.278.0>,sup_role_sup},simple_one_for_one,[{child,undefined,another_fake,{role_sup,start_link,[]},permanent,infinity,supervisor,[role_sup]}],{dict,1,16,16,8,80,48,{[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]},{{[[<0.279.0>,none]],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]}}},5,60,[],sup_role_sup,empty}
+** Reason for termination == 
+** {timeout,{gen_server,call,[<0.75.0>,{timeout}]}}
+2014-06-21 01:19:39 =CRASH REPORT====
+  crasher:
+    initial call: supervisor:sup_role_sup/1
+    pid: <0.278.0>
+    registered_name: []
+    exception exit: {{timeout,{gen_server,call,[<0.75.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [monscr,<0.75.0>]
+    messages: []
+    links: []
+    dictionary: []
+    trap_exit: true
+    status: running
+    heap_size: 610
+    stack_size: 27
+    reductions: 350
+  neighbours:
+2014-06-21 13:26:17 =CRASH REPORT====
+  crasher:
+    initial call: role:init/1
+    pid: <0.133.0>
+    registered_name: []
+    exception exit: {{normal,{gen_server,call,[<0.85.0>,{timeout}]}},[{gen_server,terminate,6,[{file,"gen_server.erl"},{line,744}]},{proc_lib,init_p_do_apply,3,[{file,"proc_lib.erl"},{line,239}]}]}
+    ancestors: [<0.85.0>]
+    messages: []
+    links: [<0.211.0>]
+    dictionary: [{random_seed,{29862,1581,5177}}]
+    trap_exit: false
+    status: running
+    heap_size: 1598
+    stack_size: 27
+    reductions: 5574
+  neighbours:
+    neighbour: [{pid,<0.211.0>},{registered_name,[]},{initial_call,{role_consumer,init,1}},{current_function,{role_consumer,main_loop,4}},{ancestors,[]},{messages,[]},{links,[<0.133.0>]},{dictionary,[]},{trap_exit,false},{status,waiting},{heap_size,376},{stack_size,10},{reductions,538}]

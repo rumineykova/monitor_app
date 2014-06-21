@@ -1,0 +1,3 @@
+local protocol sing_test at client(role sender, role recv) {
+	request_item(string) to recv;
+}

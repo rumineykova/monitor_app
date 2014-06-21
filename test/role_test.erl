@@ -77,7 +77,7 @@ create_conersation_test()->
   ?assertEqual(ok, Return1).
 
 
-%Todo this does not work
+%Todo this does not works
 %ready_test()->
 %  db_utils:install(node(), "../db/"),
 %  db_utils:get_table(prova),
