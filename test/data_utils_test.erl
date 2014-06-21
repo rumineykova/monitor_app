@@ -16,11 +16,11 @@
 
 %% -record(spec,{protocol, role, roles, ref, imp_ref, funcs, projection, lines}).
 spec_test()->
-  Spc = data_utils:spec_create(pt,rl,rls,rf,mprf,fncs,prj,ln),
-  ?assertEqual(#spec{ protocol = pt, role = rl, roles = rls, ref = rf, imp_ref = mprf, funcs = fncs, projection = prj, lines = ln},Spc),
+  Spc = data_utils:spec_create(pt,rl,rls,rf,mprf,[fncs],prj,ln),
+  ?assertEqual(#spec{ protocol = pt, role = rl, roles = rls, ref = rf, imp_ref = mprf, funcs = [fncs], projection = prj, lines = ln},Spc),
 
-  Spc1 = data_utils:spec_update_mult(Spc, [{protocol,pt1},{role,rl1},{roles,rls1},{ref,rf1},{imp_ref,mprf1},{funcs,fncs1},{projection,prj1},{lines,ln1}]),
-  ?assertEqual(#spec{ protocol = pt1, role = rl1, roles = rls1, ref = rf1, imp_ref = mprf1, funcs = fncs1, projection = prj1, lines = ln1},Spc1).
+  Spc1 = data_utils:spec_update_mult(Spc, [{protocol,pt1},{role,rl1},{roles,rls1},{ref,rf1},{imp_ref,mprf1},{funcs,[fncs1]},{projection,prj1},{lines,ln1}]),
+  ?assertEqual(#spec{ protocol = pt1, role = rl1, roles = rls1, ref = rf1, imp_ref = mprf1, funcs = [fncs1], projection = prj1, lines = ln1},Spc1).
 
 
 %% -record(conn,{connection, active_chn, con_id, active_q, active_exc, active_cns}).
@@ -111,10 +111,10 @@ internal_test()->
 func_test()->
 
   Func = data_utils:func_create(none, none1),
-  ?assertEqual(#func{ msg = none, func = none1 },Func),
+  ?assertEqual(#func{ sign = none, func = none1 },Func),
 
-  Func2 = data_utils:func_update(msg, Func, up1),
-  ?assertEqual(#func{ msg = up1, func =none1 },Func2),
+  Func2 = data_utils:func_update(sign, Func, up1),
+  ?assertEqual(#func{ sign = up1, func =none1 },Func2),
 
   Func3 = data_utils:func_update(func, Func2, up2),
-  ?assertEqual(#func{ msg = up1, func =up2 }, Func3).
+  ?assertEqual(#func{ sign = up1, func =up2 }, Func3).

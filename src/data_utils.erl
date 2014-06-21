@@ -90,11 +90,11 @@ prot_sup_create(Prot, Ref, Roles) when is_list(Roles) ->
 
 func_update(func, Fnc, Val)->
   Fnc#func{ func = Val};
-func_update(msg, Fnc, Val)->
-  Fnc#func{ msg = Val}.
+func_update(sign, Fnc, Val)->
+  Fnc#func{ sign = Val}.
 
 func_create(Msg, Func) ->
-  #func{msg = Msg,
+  #func{sign = Msg,
         func = Func}.
 
 
@@ -109,6 +109,8 @@ role_data_update_mult(Rdata, ValList) when is_list(ValList) ->
             end, Rdata, ValList).
 
 
+role_data_update(state, Rdata, Val) ->
+  Rdata#role_data{ state = Val };
 role_data_update(exc, Rdata, Val) ->
   Rdata#role_data{ exc = Val };
 role_data_update(conn, Rdata, Val) ->
@@ -137,7 +139,7 @@ spec_update(lines, Spec, Val) ->
   Spec#spec{ lines = Val };
 spec_update(projection, Spec, Val) ->
   Spec#spec{ projection = Val };
-spec_update(funcs, Spec, Val) ->
+spec_update(funcs, Spec, Val) when is_list(Val) ->
   Spec#spec{ funcs = Val };
 spec_update(imp_ref, Spec, Val) ->
   Spec#spec{ imp_ref = Val };
@@ -150,7 +152,7 @@ spec_update(role, Spec, Val) ->
 spec_update(protocol, Spec, Val) ->
   Spec#spec{ protocol = Val }.
 
-spec_create(Prot, Role, Roles, Ref, ImpRef, Funcs, Proj, Lines) ->
+spec_create(Prot, Role, Roles, Ref, ImpRef, Funcs, Proj, Lines) when is_list(Funcs)->
   #spec{ protocol = Prot,
          role = Role,
          roles = Roles,

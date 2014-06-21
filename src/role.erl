@@ -13,8 +13,20 @@
 %% ====================================================================
 %% API Exports
 %% ====================================================================
--export([start_link/1, send/4, 'end'/1, create/2, cancel/2, stop/1]).
+
+-export([start_link/1, send/4, 'end'/1, create/2, cancel/2,  stop/1, get_init_state/1]).
+
 -compile(export_all).
+
+-define(USER,  <<"test">>).
+-define(PWD,  <<"test">>).
+-define(HOST,  "94.23.60.219").
+
+
+-define(MUST_METHODS, [{ready,2},
+                 {config_done,2},
+                 {cancel,2},
+                 {terminated,2}]).
 
 %% ====================================================================
 %% API functions
@@ -33,6 +45,9 @@ send(Name, Destination, Signature, Content) ->
 
 stop(Name)->
   gen_server:cast(Name,{stop}).
+
+get_init_state(Name)->
+  gen_server:call(Name, {init_state}).
 
 %=============================================================================================================================================================
 %=============================================================================================================================================================
@@ -74,10 +89,9 @@ init(State) ->
   Role = State#role_data.spec#spec.role,
 
   %TODO: This file should be downlaoded
-  {ok,Data} = file:read_file("../resources/"++ atom_to_list(Role) ++ ".scr"),
+  {ok,Data} = file:read_file("resources/"++ atom_to_list(Role) ++ ".scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
-
 
   {ok, NumLines} = case db_utils:get_table(Role) of
     {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
@@ -85,10 +99,14 @@ init(State) ->
     {error, _Reason} -> erlang:exit()
   end,
 
-  User = <<"test">>,
-	Pwd = <<"test">>,
+     St = {ok},
+%    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+%                                    State#role_data.spec#spec.imp_ref,
+%                                    Role, 
+%                                    State#role_data.spec#spec.funcs),
+%
+  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
 
-  Connection = rbbt_utils:connect("94.23.60.219", User, Pwd),
   Channel = rbbt_utils:open_channel(Connection),
 
 	Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
@@ -100,7 +118,7 @@ init(State) ->
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec}]),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
 
   {ok, NArgs}.
 
@@ -145,6 +163,16 @@ handle_call({create,_Protocol},_From,State)->
   NState = data_utils:role_data_update(conn, State, Conn),
 
   {reply,ok,NState};
+
+handle_call({init_state}, _From, State)->
+
+  %% Similar to wait in  posix the process is alive until someone read that the has been an error
+  %% If an error is the response then the process ends itself, if not continues as normal
+  
+  case State#role_data.state of
+    {ok} -> {reply, {ok}, State};
+    {error, R} = K ->   {stop,R,K,State}
+  end;
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -345,6 +373,89 @@ code_change(_OldVsn, State, _Extra) ->
 %% Utilities
 %% ===================================================================
 
+check_signatures_and_methods(Protocol, Ref, TableName, CallBackList) ->
+  case check_signatures(TableName, CallBackList) of
+      {ok} ->  lager:info("sig done"),check_method(Protocol, Ref, CallBackList);
+    M -> M
+  end.
+
+
+
+%% check_signatures/2
+%% ====================================================================
+%% @doc
+-spec check_signatures(TableName :: term(), CallbackList :: integer()) -> Result when
+  Result :: {ok} | {error, Reason},
+  Reason :: signature_not_found | wrong_call | unkown.
+%% ====================================================================
+check_signatures(TableName, CallbackList) when is_list(CallbackList)->
+
+  case catch lists:foreach(fun(Element)->
+
+      case  mnesia:dirty_match_object(TableName, #row{ num = '_' , inst = {'_', Element#func.sign, '_'}}) of
+        [] -> throw(signature_not_found);
+        _  -> ok
+      end
+
+  end, CallbackList) of
+    signature_not_found -> {error, signature_not_found};
+    ok -> {ok};
+    _ -> {error, unkown}
+  end;
+check_signatures(_TableName, _CallbackList) ->
+  {error, wrang_call}.
+
+
+check_method(Protocol, Ref, Declare_funcs) ->
+
+  %Generate the list of funcions declared by user in the config to check if they are implemented
+  Dfuncs = lists:foldl(fun(E,Acc) -> [{E#func.func,2} | Acc] end,[], Declare_funcs),
+
+  case catch gen_server:call(Ref,{methods,Protocol}) of
+    {ok, List} -> case check_lists(?MUST_METHODS, List) of
+                    {ok} -> check_lists(Dfuncs, List);
+                    M -> M
+                  end;
+    _ -> {error, unkown}
+  end.
+
+
+check_lists(L1,L2) ->
+  case catch match_lists(L1, L2) of
+    {ok} -> {ok};
+    method_not_found -> {error, method_not_found};
+    arity_missmatch  -> {error, arity_missmatch}
+  end.
+
+
+match_lists([],_)->
+  {ok};
+match_lists([ {K,A} | Must_list], List) when is_list(List) ->
+  case lists:keyfind(K,1,List) of
+    {_, Arity} when Arity =:= A -> match_lists(Must_list, List);
+    {_, Arity} when Arity =/= A -> throw(arity_missmatch);
+    _ -> throw(method_not_found)
+end.
+
+
+
+
+%% check_for_termination/2
+%% ====================================================================
+%% @doc
+-spec check_for_termination(State :: term(), CurLine :: integer()) -> Result when
+  Result :: true | false.
+%% ====================================================================
+check_for_termination(State,CurLine)->
+  case State#role_data.spec#spec.lines of
+    N when N =:= CurLine ->
+      bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol}),
+      true;
+    _ -> false
+  end.
+
+
+
 %% cancel_protocol/2
 %% ====================================================================
 %% @doc
@@ -399,21 +510,6 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
 %% Verification of protocols
 %% ===================================================================
 
-
-
-%% are_we_done/2
-%% ====================================================================
-%% @doc
--spec check_for_termination(State :: term(), CurLine :: integer()) -> Result when
-  Result :: true | false.
-%% ====================================================================
-check_for_termination(State,CurLine)->
-  case State#role_data.spec#spec.lines of
-    N when N =:= CurLine ->
-      bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol}),
-      true;
-    _ -> false
-  end.
 
 
 %% match_directive/2
@@ -481,7 +577,6 @@ find_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
 %% ====================================================================
 translate_parsed_to_mnesia(Role,Content)->
     Mer = db_utils:ets_create(Role, [set]),
-    lager:info("[~p] ~p",[self(),Mer]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
     fix_endings(Role,Mer,Tnum-1),
     {ok,Tnum}.

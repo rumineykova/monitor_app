@@ -43,7 +43,7 @@ start_link(State) ->
 %% ====================================================================
 init(_Args) ->
     AChild = {another_fake,{role_sup,start_link,[]},
-	      permanent,infinity,supervisor,[role_sup]},
+      transient,infinity,supervisor,[role_sup]},
     {ok,{{simple_one_for_one,5,60}, [AChild]}}.
 
 %% ====================================================================

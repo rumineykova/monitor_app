@@ -218,7 +218,7 @@ config_prot_roles({Prot,Role,Roles}, {Pid,Protocol_sup_list}) ->
              El = data_utils:prot_sup_create(Prot, undef, [NewRole]),
              [El];
     Sup_intance ->
-      NewRole = data_utils:lrole_create(Role, Roles, undef,Pid, []),
+      NewRole = data_utils:lrole_create(Role, Roles, undefined,Pid, []),
       Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
       lists:keyreplace(Prot, 1, Protocol_sup_list, Updated_prot_sup)
   end,
@@ -235,14 +235,13 @@ config_prot_roles(_, _) ->
   Config :: {term(), atom(), term(), atom()},
   Data :: {pid(), term()}.
 %% ====================================================================
-config_funcs({Protocol, Role, Message,Function},{Pid,Acc}) ->
-  lager:info("Protocol ~p , Acc ~p",[Protocol, Acc]),
+config_funcs({Protocol, Role, Signature,Function},{Pid,Acc}) ->
   Return = case lists:keyfind(Protocol, 2, Acc) of
     false -> {error, bad_arguments};
     M -> case lists:keyfind(Role, 2, M#prot_sup.roles) of
            false -> {error, role_not_defined};
            L ->
-             New_Func = data_utils:func_create(Message, Function),
+             New_Func = data_utils:func_create(Signature, Function),
              New = data_utils:lrole_add_func(L, New_Func),
 
              Nprot = lists:keyreplace(Role, 2, M#prot_sup.roles, New),
@@ -289,9 +288,16 @@ spawn_role(Role, {Prot, RSup, Acc}) ->
   Result = case Role#lrole.ref of
     undefined  ->
       New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
-      New_role_data = data_utils:role_data_create(New_spec, undef, enf),
+      New_role_data = data_utils:role_data_create(New_spec, undef, undef),
       {ok,RoleId} =  role_sup:start_child(RSup, New_role_data),
-      lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
+
+      %Check if the role has started correctly if not skip the insertion and display log
+      %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
+      case role:get_init_state(RoleId)of
+        {ok} ->   lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
+        Error ->  lager:error("Error starting Role, Reason: ~p",[Error]), Acc
+      end;
+
     _ -> lager:info("[~p] already added NOT adding it again",[Role]),
       Acc
   end,
