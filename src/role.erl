@@ -20,6 +20,12 @@
 -define(PWD,  <<"test">>).
 -define(HOST,  "94.23.60.219").
 
+
+-define(MUST_METHODS, [{ready,2},
+                 {config_done,2},
+                 {cancel,2},
+                 {terminated,2}]).
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -95,8 +101,7 @@ init(State) ->
     {error, _Reason} -> erlang:exit()
   end,
 
-  St = check_signatures(Role, State#role_data.spec#spec.funcs),
-
+  St = check_signatures_and_methods(State#role_data.spec#spec.imp_ref,Role, State#role_data.spec#spec.funcs),
 
   Connection = rbbt_utils:connect(?USER, ?PWD, ?HOST),
   Channel = rbbt_utils:open_channel(Connection),
@@ -367,6 +372,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% Utilities
 %% ===================================================================
 
+check_signatures_and_methods(Ref, TableName, CallBackList) ->
+  case check_signatures(TableName, CallBackList) of
+    {ok} ->  check_method(Ref, CallBackList);
+    M -> M
+  end.
+
+
+
 %% check_signatures/2
 %% ====================================================================
 %% @doc
@@ -375,7 +388,7 @@ code_change(_OldVsn, State, _Extra) ->
   Reason :: signature_not_found | wrong_call | unkown.
 %% ====================================================================
 check_signatures(TableName, CallbackList) when is_list(CallbackList)->
-  lager:info("check_signature ~p",[CallbackList]),
+
   case catch lists:foreach(fun(Element)->
 
       case  mnesia:dirty_match_object(TableName, #row{ num = '_' , inst = {'_', Element#func.sign, '_'}}) of
@@ -390,6 +403,41 @@ check_signatures(TableName, CallbackList) when is_list(CallbackList)->
   end;
 check_signatures(_TableName, _CallbackList) ->
   {error, wrang_call}.
+
+
+check_method(Ref, Declare_funcs) ->
+
+  %Generate the list of funcions declared by user in the config to check if they are implemented
+  Dfuncs = lists:foldl(fun(E,Acc) -> [{E#func.func,2} | Acc] end,[], Declare_funcs),
+
+  case catch gen_server:call(Ref, method) of
+    {ok, List} -> case check_lists(?MUST_METHODS, List) of
+                    {ok} -> check_lists(Dfuncs, List);
+                    M -> M
+                  end;
+    _ -> {error, unkown}
+  end.
+
+
+check_lists(L1,L2) ->
+  case catch match_lists(L1, L2) of
+    {ok} -> {ok};
+    method_not_found -> {error, method_not_found};
+    arity_missmatch  -> {error, arity_missmatch}
+  end.
+
+
+match_lists([],_)->
+  {ok};
+match_lists([ {K,A} | Must_list], List) when is_list(List) ->
+  case lists:keyfind(K,1,List) of
+    {_, Arity} when Arity =:= A -> match_lists(Must_list, List);
+    {_, Arity} when Arity =/= A -> throw(arity_missmatch);
+    _ -> throw(method_not_found)
+end.
+
+
+
 
 %% check_for_termination/2
 %% ====================================================================

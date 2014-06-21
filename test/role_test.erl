@@ -92,6 +92,109 @@ check_for_signatures_test() ->
   ?assertEqual({ok}, Rest).
 
 
+check_for_methods_1_test() ->
+  NRef = spawn_link(fun() ->
+            receive
+              {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
+            end
+          end),
+
+  M =  role:check_method(NRef, [#func{ func = test }]),
+  ?assertEqual({ok}, M).
+
+check_for_methods_2_test() ->
+  NRef = spawn_link(fun() ->
+    receive
+      {_,From,_} -> gen_server:reply(From,{ok,[{tst,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
+    end
+  end),
+
+  M =  role:check_method(NRef, [#func{ sign = test }]),
+  ?assertEqual({error, method_not_found}, M).
+
+
+check_for_methods_3_test() ->
+  NRef = spawn_link(fun() ->
+    receive
+      {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{redy,2},{terminated,2},{config_done,2},{cancel,2}]})
+    end
+  end),
+
+  M =  role:check_method(NRef, [#func{ sign = test }]),
+  ?assertEqual({error, method_not_found}, M).
+
+check_for_methods_4_test() ->
+  NRef = spawn_link(fun() ->
+    receive
+      {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
+    end
+  end),
+
+  M =  role:check_method(NRef, [#func{ sign = test1 }]),
+  ?assertEqual({error, method_not_found}, M).
+
+check_both_test()->
+
+  {ok,Data} = file:read_file("../resources/client.scr"),
+  {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
+  {ok,Scr} = scribble:parse(Final),
+
+  db_utils:install(node(),"db"),
+  case db_utils:get_table(prova) of
+    {created, TbName} ->   role:translate_parsed_to_mnesia(TbName,Scr);
+    {exists, TbName} -> role:translate_parsed_to_mnesia(TbName,Scr);
+    {error, Reason} -> lager:error("~p",[Reason])
+  end,
+
+  NRef1 = spawn_link(fun aux_method1/0),
+
+  R1 = role:check_signatures_and_methods(NRef1, prova, [#func{ sign = send_newPrice, func = sebay }]),
+
+  ?assertEqual({ok}, R1),
+
+  NRef2 = spawn_link(fun aux_method1/0),
+
+  R2 = role:check_signatures_and_methods(NRef2, prova,[#func{ sign = send_newP, func = sebay }]),
+
+  ?assertEqual({error, signature_not_found }, R2),
+
+  NRef3 = spawn_link(fun aux_method1/0),
+
+  R3 = role:check_signatures_and_methods(NRef3,prova, [#func{ sign = send_newPrice, func = seb }]),
+
+  ?assertEqual({error, method_not_found}, R3),
+
+  NRef4 = spawn_link(fun aux_method2/0),
+
+  R4 = role:check_signatures_and_methods(NRef4, prova,[#func{ sign = send_newPrice, func = sebay }]),
+
+  ?assertEqual({error, method_not_found}, R4).
+
+aux_method1() ->
+    receive
+      {_,From,_} -> gen_server:reply(From,{ok,[{sebay,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
+    end.
+
+aux_method2() ->
+  receive
+    {_,From,_} -> gen_server:reply(From,{ok,[{sebay,2},{read,2},{terminated,2},{config_done,2},{cancel,2}]})
+  end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
