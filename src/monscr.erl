@@ -34,7 +34,7 @@ register(Name,Pid) ->
 %%
 %% @end
 config_protocol(Name,Protocol) ->
-  gen_server:call(Name, {config,Protocol}).
+  gen_server:cast(Name, {config,Protocol}).
 
 
 
@@ -80,9 +80,6 @@ init(_State) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
-handle_call({config,Config}, _From, State) ->
-  {ok,UState, Reply} = config_protocol_imp(Config, State),
-  {reply, Reply, UState};
 handle_call({register,Id},_From,State) ->
 	{UState,Reply} = register_imp(Id, State),
 	{reply,Reply,UState};
@@ -101,8 +98,14 @@ handle_call(_Request,_From,State)->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+handle_cast({config,{Pid,_ } = Config } , State) ->
+  lager:info("handle_caset config"),
+  {ok,UState, Reply} = config_protocol_imp(Config, State),
+  lager:info("send ids list back"),
+  gen_monrcp:send(Pid, {callback, config_done,Reply}),
+  {noreply, UState};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 
 %% handle_info/2

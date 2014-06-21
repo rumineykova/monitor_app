@@ -42,8 +42,10 @@ config_test() ->
       {bid_sebay,client,send_update,send_update}
     ] }},
 
-  {ids,[{bid_sebay,client,Res2}]} = monscr:config_protocol(Mn,Pr),
-  ?assertEqual(true, is_pid(Res2)).
+  %TODO: This is no like this anymore
+  %{ids,[{bid_sebay,client,Res2}]} = monscr:config_protocol(Mn,Pr),
+  M = monscr:config_protocol(Mn,Pr),
+  ?assertEqual(ok, M).
 
 
 

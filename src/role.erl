@@ -88,10 +88,10 @@ init(State) ->
 
   Role = State#role_data.spec#spec.role,
 
-  %TODO: This file should be downlaoded
-  {ok,Data} = file:read_file("resources/"++ atom_to_list(Role) ++ ".scr"),
-	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
-	{ok,Scr} = scribble:parse(Final),
+  %This method will load and in case of not having the file requestes it from the source
+  lager:info("before manage"),
+  Scr = manage_projection_file("../resources/", State),
+  lager:info("after mange"),
 
   {ok, NumLines} = case db_utils:get_table(Role) of
     {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
@@ -99,12 +99,11 @@ init(State) ->
     {error, _Reason} -> erlang:exit()
   end,
 
-     St = {ok},
-%    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
-%                                    State#role_data.spec#spec.imp_ref,
-%                                    Role, 
-%                                    State#role_data.spec#spec.funcs),
-%
+  St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+                                    State#role_data.spec#spec.imp_ref,
+                                    Role, 
+                                    State#role_data.spec#spec.funcs),
+
   Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
 
   Channel = rbbt_utils:open_channel(Connection),
@@ -380,7 +379,6 @@ check_signatures_and_methods(Protocol, Ref, TableName, CallBackList) ->
   end.
 
 
-
 %% check_signatures/2
 %% ====================================================================
 %% @doc
@@ -453,6 +451,69 @@ check_for_termination(State,CurLine)->
       true;
     _ -> false
   end.
+
+
+
+manage_projection_file(Path, State)->
+
+  %TODO: solve conflictivity folders when downlaod and source in the localhost
+  FileName = atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
+
+  case file:read_file(Path ++ FileName) of
+    {ok, Binary} -> lager:info("file already exists"),
+      {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
+      {ok,Scr} = scribble:parse(Final),
+      Scr;
+    {error, _Reason} ->
+      lager:info("Error correct path"),
+      Listen = open_reception_socket(6565),
+      lager:info("socket created"),
+      request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", 6565),
+      Socket =acceptor(Listen),
+      lager:info("request file to source"),
+      download_projection_from_source(Socket, Path, FileName),
+      lager:info("file downdload"),
+      {ok, Binary} = file:read_file(Path ++ FileName),
+      {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
+      {ok,Scr} = scribble:parse(Final),
+      Scr
+  end.
+
+
+open_reception_socket(Port)->
+  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, false}]),
+  Listen.
+
+acceptor(Listen) ->
+  case gen_tcp:accept(Listen) of
+    {ok,Socket} -> Socket;
+    {error, Reason} -> io:format("Could not be accepted ~s ~n",[Reason])
+  end.
+
+
+request_file_source(ImpRef, FileName, Host, Port) ->
+  gen_monrcp:send(ImpRef, {callback,projection_request,{send,FileName,Host, Port}}).
+
+
+download_projection_from_source(Socket, Path, Filename) ->
+  Bs = file_receiver_loop(Socket, <<"">>),
+  save_file(Path, Filename,Bs).
+
+file_receiver_loop(Socket,Bs)->
+  lager:info("insie"),
+  case gen_tcp:recv(Socket, 0) of
+    {ok, B} -> lager:info("loop"),file_receiver_loop(Socket,[Bs, B]);
+    {error, closed} -> Bs;
+    M -> lager:info("Error uknown ~p",[M])
+  end.
+
+save_file(Path, Filename,Bs) ->
+  lager:info("~nFilename: ~p",[Filename]),
+  PathFile  = Path ++ Filename,
+  {ok, Fd} = file:open(PathFile, write),
+  file:write(Fd, Bs),
+  file:close(Fd).
+
 
 
 

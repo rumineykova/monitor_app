@@ -85,8 +85,8 @@ create_conersation_test()->
   ok = role:create(Return, bid_sebay),
 
   Return1 = receive
-              M -> M;
-              _ -> error
+              M -> M
+              %_ -> error
            end,
 
   role:stop(Return),
@@ -114,8 +114,8 @@ ready_test()->
   role:create(Return, bid_sebay),
 
   Return1 = receive
-              M -> M;
-              _ -> error
+              M -> M
+              %_ -> error
            end,
   role:stop(Return),
 
@@ -141,8 +141,8 @@ send_message_test() ->
   %TODO: fix this
 
   Return1 = receive
-              M -> M;
-              _ -> error
+              M -> M
+              %_ -> error
             end,
 
   role:send(Return, recv, request_item,jejje),
@@ -279,7 +279,7 @@ aux_method_org(Args) ->
                     aux_method_org(Args);
       {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
                     aux_method_org(Args);
-      _ -> error
+      M -> lager:info("METHOD ORG ~p",[M])
     end.
 
 

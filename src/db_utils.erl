@@ -74,7 +74,7 @@ get_table(TableName)->
   Result :: term().
 %% ====================================================================
 add_row(TbName, Num, Instr)->
-  lager:info("[~p] Add row to ~p #~p int=~p",[self(),TbName,Num,Instr]),
+  %lager:info("[~p] Add row to ~p #~p int=~p",[self(),TbName,Num,Instr]),
   F = fun() ->
     mnesia:write(TbName,#row{num = Num,inst = Instr},write)
   end,
