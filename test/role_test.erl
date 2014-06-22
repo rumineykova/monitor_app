@@ -134,7 +134,6 @@ send_message_test() ->
   ?assertEqual(true, is_pid(Return)),
 
   role:create(Return, bid_sebay),
-  %TODO: fix this
 
   Return1 = receive
               M -> M

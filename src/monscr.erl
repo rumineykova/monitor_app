@@ -187,8 +187,7 @@ config_protocol_imp(Config, State)->
       {NUState, RolesIds} = start_roles(UState),
       lager:info("Roles Started ~p",[RolesIds]),
       {ok,NUState, {ids, RolesIds}};
-    {error,_Reason} -> {State, {error, "[monscr.erl][config_protocol_imp] Error"}}
-    %TODO: why I'm returning State when error? required?
+    {error,_Reason} -> {error, "[monscr.erl][config_protocol_imp] Error"}
   end.
 
 

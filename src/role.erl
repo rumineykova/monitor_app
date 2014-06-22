@@ -277,7 +277,6 @@ handle_cast({msg,_Ordest,Sig,Cont}=Pc,State)  ->
                        State#role_data.spec#spec.role) of
 
     {ok, Num} ->  {func,_s,Fimp} = lists:keyfind(Sig, 2, State#role_data.spec#spec.funcs),
-                  %TODO: Send error message if function callback has not been defined!!!!
 
                   gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback,Fimp,{msg,Cont}}),
                   State#role_data.exc#exc{ count = Num };
@@ -307,10 +306,10 @@ handle_cast({'end',_Prot},State)->
 	{noreply,NArgs};
 handle_cast({terminated,_Prot},State)->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
-    gen_server:cast(self(),{'end',State#role_data.spec#spec.protocol}),
+    role:'end'(self(),State#role_data.spec#spec.protocol),
     {noreply,State};
 handle_cast({cancel,Prot},State)->
-	gen_server:cast(self(),{'end',Prot}),
+	role:'end'(self(),Prot),
   {noreply, State};
 handle_cast({stop},State)->
   {stop, normal, State};
