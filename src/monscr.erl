@@ -291,7 +291,7 @@ spawn_role(Role, {Prot, RSup, Acc}) ->
     undefined  ->
       New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
       New_role_data = data_utils:role_data_create(New_spec, undef, undef),
-      {ok,RoleId} =  role_sup:start_child(RSup, New_role_data),
+      {ok,RoleId} =  role_sup:start_child(RSup, {"resources/",New_role_data}),
 
       %Check if the role has started correctly if not skip the insertion and display log
       %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!

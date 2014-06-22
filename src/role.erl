@@ -14,7 +14,7 @@
 %% API Exports
 %% ====================================================================
 
--export([start_link/1, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1]).
+-export([start_link/2, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1]).
 
 -compile(export_all).
 
@@ -56,7 +56,7 @@ get_init_state(Name)->
 %% start_link/1
 %% ====================================================================
 %% @doc
--spec start_link(State :: term()) -> Result when
+-spec start_link(Path:: term(), State :: term()) -> Result when
   Result :: {ok, State}
   | {ok, State, Timeout}
   | {ok, State, hibernate}
@@ -65,10 +65,10 @@ get_init_state(Name)->
   State :: term(),
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-start_link(State) ->
+start_link(Path, State) ->
   %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
-  gen_server:start_link(?MODULE, NState, []).
+  gen_server:start_link(?MODULE, {Path,NState}, []).
 
 
 
@@ -84,13 +84,13 @@ start_link(State) ->
 	State :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-init(State) ->
+init({Path, State}) ->
 
   Role = State#role_data.spec#spec.role,
 
   %This method will load and in case of not having the file requestes it from the source
   lager:info("before manage"),
-  Scr = manage_projection_file("../resources/", State),
+  Scr = manage_projection_file(Path, State),
   lager:info("after mange"),
 
   {ok, NumLines} = case db_utils:get_table(Role) of
@@ -167,7 +167,7 @@ handle_call({init_state}, _From, State)->
 
   %% Similar to wait in  posix the process is alive until someone read that the has been an error
   %% If an error is the response then the process ends itself, if not continues as normal
-  
+  lager:info("init_stat ~p",[State]),
   case State#role_data.state of
     {ok} -> {reply, {ok}, State};
     {error, R} = K ->   {stop,R,K,State}
@@ -397,7 +397,7 @@ check_signatures(TableName, CallbackList) when is_list(CallbackList)->
   end, CallbackList) of
     signature_not_found -> {error, signature_not_found};
     ok -> {ok};
-    _ -> {error, unkown}
+    _ -> lager:error("uknown check_signatures"),{error, unkown}
   end;
 check_signatures(_TableName, _CallbackList) ->
   {error, wrang_call}.
@@ -413,7 +413,7 @@ check_method(Protocol, Ref, Declare_funcs) ->
                     {ok} -> check_lists(Dfuncs, List);
                     M -> M
                   end;
-    _ -> {error, unkown}
+    _ -> lager:error("uknown check_medhot"),{error, unkown}
   end.
 
 
@@ -507,8 +507,8 @@ file_receiver_loop(Socket,Bs)->
   end.
 
 save_file(Path, Filename,Bs) ->
-  lager:info("~nFilename: ~p",[Filename]),
   PathFile  = Path ++ Filename,
+  lager:info("~nFilename: ~p",[PathFile]),
   {ok, Fd} = file:open(PathFile, write),
   file:write(Fd, Bs),
   file:close(Fd).

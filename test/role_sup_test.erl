@@ -29,7 +29,7 @@ child_test() ->
   %Conn = data_utils:conn_create(none),
   Args = data_utils:role_data_create(Spec, none, none),
 
-  role_sup:start_child(Rs,Args),
+  role_sup:start_child(Rs,{"../resources/", Args}),
 
   ?assertEqual(true,is_pid(Rs)).
 

@@ -50,8 +50,8 @@ init(_Argss) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-start_child(SRef, Args)->
-  supervisor:start_child(SRef, [Args]).
+start_child(SRef, {Path, State})->
+  supervisor:start_child(SRef, [Path, State]).
 
 
 

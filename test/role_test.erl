@@ -31,7 +31,7 @@ start_test()->
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, NRefOrg, [], undef, undef),
 	State = #role_data{ spec = Spec },
 
-  {ok, Return} = role:start_link(State),
+  {ok, Return} = role:start_link("../resources/",State),
 	?assertEqual(true, is_pid(Return)).
 
 prot_iterator_test() ->
@@ -75,7 +75,7 @@ create_conersation_test()->
 
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link(State),
+  {ok, Return} = role:start_link("../resources/",State),
   ?assertEqual(true, is_pid(Return)),
 
   ok = role:create(Return, bid_sebay),
@@ -103,7 +103,7 @@ ready_test()->
   %Spec = data_utils:spec_create(bid_sebay, client, [], undef, self(), [], undef, undef),
 
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link(State),
+  {ok, Return} = role:start_link("../resources/",State),
 
   ?assertEqual(true, is_pid(Return)),
 
@@ -129,7 +129,7 @@ send_message_test() ->
   Spec = data_utils:spec_create(sing_test, sender, [], undef, NRefOrg, [], undef, undef),
 
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link(State),
+  {ok, Return} = role:start_link("../resources/",State),
 
   ?assertEqual(true, is_pid(Return)),
 
@@ -296,7 +296,7 @@ download_test()->
   Spec = data_utils:spec_create(down_test, test, [], undef, NRefOrg, [], undef, undef),
 
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link(State),
+  {ok, Return} = role:start_link("../resources/",State),
 
   ?assertEqual(true, is_pid(Return)),
 

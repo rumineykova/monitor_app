@@ -1,6 +1,11 @@
 README
 =============
 
+author: Ferran Obiols
+
+version: alpha v1.2
+
+
 TODO:
 -------
 ##### DONE
@@ -49,23 +54,28 @@ Project structure
 	├── include
 	├── log
 	├── priv
-	├── rebar
-	├── rebar.config
 	├── resources
 	├── src
 	│   └──  parser
 	└── test
     	└── test_resources
 
-deps: Dependencies to other projects </br>
-ebin: Compilation binary file </br>
-include: Header file for data structures</br>
-log: Log files</br>
-priv: </br>
-src: Source code</br>
-src/parser: Implementation of Scribble parser</br>
-test: eunit testing files</br>
-test/test_resources: auxiliar file for testing</br>
+deps: Dependencies to other projects 
 
+ebin: Compilation binary file 
+
+include: Header file for data structures
+
+log: Log files
+
+priv: 
+
+src: Source code
+
+src/parser: Implementation of Scribble parser
+
+test: eunit testing files
+
+test/test_resources: auxiliar file for testing
 
 
