@@ -1,0 +1,17 @@
+local protocol down_test at test(role test, role other) {
+	request_item(string) to other;
+	rec checkPoint{
+		response_item(string) from other;
+		choice at test{
+			makebid() to other;
+			send_newPrice(int) to other;
+			choice at other{
+				lower() from other;
+				continue checkPoint;
+			}or{
+				accept() from other;
+				send_update(string) from other;
+			}
+		}or{
+			nobid() to other;
+}}}

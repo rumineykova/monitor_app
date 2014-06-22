@@ -14,7 +14,7 @@
 %% API Exports
 %% ====================================================================
 
--export([start_link/1, send/4, 'end'/1, create/2, cancel/2,  stop/1, get_init_state/1]).
+-export([start_link/1, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1]).
 
 -compile(export_all).
 
@@ -34,8 +34,8 @@
 create(Name, Protocol)->
     gen_server:call(Name, {create,Protocol}).
 
-'end'(Name)->
-	gen_server:cast(Name,{'end',some}).
+'end'(Name,Reason)->
+	gen_server:cast(Name,{'end',Reason}).
 
 cancel(Name,Reason)->
     ok = gen_server:cast(Name,{Reason}).
@@ -228,7 +228,7 @@ handle_cast({confirm,Role},State) ->
                 bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
 
                 role:cancel(State#role_data.spec#spec.imp_ref,timeout),
-                gen_server:cast(self(),{'end',none})
+                role:'end'(self(),"time_out waiting for confirmation")
 	end,
 	{noreply, State};
 handle_cast({ready},State) ->

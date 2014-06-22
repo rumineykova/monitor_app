@@ -22,7 +22,6 @@
 -define(HOST,"94.23.60.219").
 
 start_test()->
-  lager:start(),
 
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
 
@@ -36,8 +35,7 @@ start_test()->
 	?assertEqual(true, is_pid(Return)).
 
 prot_iterator_test() ->
-	lager:start(),
-	
+
   %% OMG Massive error if the directdory does not exists or can't be reache, BAD_TYPE can't update!!!!!!
   %application:set_env(mnesia, dir, "../db/"),
 
@@ -72,10 +70,8 @@ create_conersation_test()->
 
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
 
-
   db_utils:install(node(), "../db/"),
   db_utils:get_table(prova1),
-
 
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
@@ -283,7 +279,63 @@ aux_method_org(Args) ->
     end.
 
 
-               
+%% ====================================================================
+%% Download projection test
+%% ====================================================================
+
+
+
+
+
+download_test()->
+
+  NRefOrg = spawn_link(?MODULE, download_method_client, [self()]),
+
+  db_utils:install(node(), "../db/"),
+  db_utils:get_table(prova2),
+
+  Spec = data_utils:spec_create(down_test, test, [], undef, NRefOrg, [], undef, undef),
+
+  State = #role_data{ spec = Spec },
+  {ok, Return} = role:start_link(State),
+
+  ?assertEqual(true, is_pid(Return)),
+
+  role:create(Return, down_test),
+
+  receive
+    M -> M
+    %_ -> error
+  end,
+
+  role:stop(Return),
+
+  case  filelib:is_regular("../resources/test.scr") of
+    true -> file:delete("../resources/test.scr"), ?assertEqual(true, true);
+    _ -> ?assertEqual(true, false)
+  end.
+
+
+download_method_client(Args) ->
+  receive
+    {_,From,_} -> gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
+      download_method_client(Args);
+    {'$gen_cast',{timeout}} -> Args ! ok,
+      download_method_client(Args);
+    {'$gen_cast',{callback,projection_request,{send, FileName, Host, Port}}} ->
+      lager:warning("FileName ~p",[FileName]),
+      {ok, Socket} = gen_tcp:connect(list_to_atom(Host), Port, [binary, {active, false}]),
+      PathFile = "../test/test_resources/" ++ FileName,
+      true = filelib:is_regular(PathFile),
+      {ok, _} = file:sendfile(PathFile, Socket),
+      ok = gen_tcp:close(Socket),
+      download_method_client(Args);
+    {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
+      download_method_client(Args);
+    M -> lager:info("METHOD ORG ~p",[M])
+  end.
+
+
 %% ====================================================================
 %% Auxiliar functions
 %% ====================================================================

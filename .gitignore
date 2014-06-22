@@ -4,6 +4,7 @@
 .project
 .settings
 .DS_STORE
+db
 log
 deps
 *.iml
@@ -11,3 +12,4 @@ deps
 *.beam
 *.plt
 *.dump
+src/gen_monrcp.erl
