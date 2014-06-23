@@ -80,3 +80,6 @@ test: eunit testing files
 test/test_resources: auxiliar file for testing
 
 
+## Execution
+
+	$ erl -pa ebin -pa deps/lager/ebin -pa deps/goldrush/ebin deps/amqp_client/ebin deps/rabbit_common/ebin -pa ebin -boot start_sasl -sname server -setcookie java
