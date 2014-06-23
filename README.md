@@ -20,6 +20,7 @@ TODO:
 - Recover state when crash
 - Change projection filename role -> protocol_role
 - Complete testing
+- Add configuration file
 
 ###### TO FIX
 Genearl:
