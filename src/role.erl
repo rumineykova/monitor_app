@@ -94,12 +94,13 @@ init({Path, State}) ->
   lager:info("after mange"),
 
   {ok, NumLines} = case db_utils:get_table(Role) of
-    {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
-    {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
+    {created, TbName} -> lager:info("cread"),translate_parsed_to_mnesia(TbName,Scr);
+    {exists, TbName} ->  lager:info("exitss"), translate_parsed_to_mnesia(TbName,Scr);
     {error, _Reason} -> erlang:exit()
   end,
 
-  St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+  lager:info("db created"),
+    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
                                     State#role_data.spec#spec.imp_ref,
                                     Role, 
                                     State#role_data.spec#spec.funcs),
@@ -226,8 +227,9 @@ handle_cast({confirm,Role},State) ->
 
         false ->lager:error("[~p] Timeout",[self()]),
                 bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
-
-                role:cancel(State#role_data.spec#spec.imp_ref,timeout),
+                
+                gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
+                %role:cancel(State#role_data.spec#spec.imp_ref,timeout),
                 role:'end'(self(),"time_out waiting for confirmation")
 	end,
 	{noreply, State};
@@ -341,6 +343,10 @@ handle_info(_Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, State) ->
+
+	State#role_data.conn#conn.active_cns ! exit,
+
+
   rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
   %% Close the connection
 

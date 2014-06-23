@@ -25,7 +25,7 @@
 %%
 %% @end
 register(Name,Pid) ->
-  gen_server:call(Name,{register,Pid}).
+  gen_server:call({global, Name},{register,Pid}).
 
 
 %% config_protocol/2
@@ -34,7 +34,7 @@ register(Name,Pid) ->
 %%
 %% @end
 config_protocol(Name,Protocol) ->
-  gen_server:cast(Name, {config,Protocol}).
+  gen_server:cast({global,Name}, {config,Protocol}).
 
 
 
@@ -58,7 +58,10 @@ start_link([]) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(_State) ->
-	erlang:register(monscr, self()),
+    lager:warning("warnign"),
+    global:registered_names(),
+	Done = global:register_name(monscr,self()),
+    lager:info("Done ~p ",[Done]),
 	{ok,Main_sup} = sup_role_sup:start_link(),
   UState = data_utils:internal_create(Main_sup, [], []),
   {ok, UState}.
@@ -186,7 +189,7 @@ config_protocol_imp(Config, State)->
     {ok, UState} ->
       {NUState, RolesIds} = start_roles(UState),
       lager:info("Roles Started ~p",[RolesIds]),
-      {ok,NUState, {ids, RolesIds}};
+      {ok,NUState, RolesIds};
     {error,_Reason} -> {error, "[monscr.erl][config_protocol_imp] Error"}
   end.
 
@@ -264,9 +267,9 @@ config_funcs(_,_) ->
   Result :: {list(),term()}.
 %% ====================================================================
 start_roles(State) ->
-  UState = lists:foldl(fun  traverse_supervisors/2, State, State#internal.prot_sup),
+  {UState, Problems} = lists:foldl(fun  traverse_supervisors/2, State, State#internal.prot_sup),
   Started_roles = generate_list(UState),
-  {UState, Started_roles}.
+  {UState, {Started_roles, Problems}}.
 
 
 traverse_supervisors(Prot_supervisor, Acc) ->
@@ -274,20 +277,20 @@ traverse_supervisors(Prot_supervisor, Acc) ->
     Roles = Prot_supervisor#prot_sup.roles,
 
     {ok,RSup} = sup_role_sup:start_child(Acc#internal.main_sup,none),
-    {_,_,NRoles} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles}, Roles),
+    {_,_,NRoles,Problems} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles,[]}, Roles),
     NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
     Almost = lists:keyreplace(Protocol, 2, Acc#internal.prot_sup, NM),
-  data_utils:internal_update(prot_sup, Acc, Almost).
+    {data_utils:internal_update(prot_sup, Acc, Almost), Problems}.
 
 
 
-spawn_role(Role, {Prot, RSup, Acc}) ->
+spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
   RRole = Role#lrole.role,
   RRoles = Role#lrole.roles,
   RImpRef = Role#lrole.imp_ref,
   RFuncs = Role#lrole.funcs,
 
-  Result = case Role#lrole.ref of
+  {Result, RProblems} = case Role#lrole.ref of
     undefined  ->
       New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
       New_role_data = data_utils:role_data_create(New_spec, undef, undef),
@@ -296,14 +299,16 @@ spawn_role(Role, {Prot, RSup, Acc}) ->
       %Check if the role has started correctly if not skip the insertion and display log
       %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
       case role:get_init_state(RoleId)of
-        {ok} ->   lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId));
-        Error ->  lager:error("Error starting Role, Reason: ~p",[Error]), Acc
+        {ok} -> UAcc = lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId)),
+                {UAcc, Problems};
+        Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
+                { Acc, [{RRole,Error} | Problems]}
       end;
 
     _ -> lager:info("[~p] already added NOT adding it again",[Role]),
-      Acc
+        {Acc,Problems}
   end,
-  {Prot, RSup, Result}.
+  {Prot, RSup, Result, RProblems}.
 
 
 %% generate_list/1

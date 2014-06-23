@@ -36,11 +36,13 @@ install(Nodes, Path)->
 
 get_table(TableName)->
   %When create gets emptied
+  lager:info("mnesia get table"),
   mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
     {record_name,row},
     {ram_copies, [node()]}
   ]),
 
+  lager:info("wait for table"),
   mnesia:wait_for_tables([TableName], infinity), {created, TableName}.
   %TODO: recover without filling
   %case exist_table(TableName, mnesia:system_info(tables)) of
@@ -113,7 +115,9 @@ print_db(Tname, Ls)->
 %% ================================================================================
 
 ets_create(Name, Options) ->
-  ets:new(Name,Options).
+    lager:info("creating ets"),
+    ets:new(Name,Options).
+
 
 ets_lookup(Mer, CName)->
   [{_,Line}] = ets:lookup(Mer,CName),
