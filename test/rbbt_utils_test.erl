@@ -69,6 +69,11 @@ consumer_test()->
 
   Pid ! exit,
 
+  Return = receive
+             cancel_ok -> ok;
+             _ -> error
+           end,
+
   ?assertEqual(ok, Return).
 
 

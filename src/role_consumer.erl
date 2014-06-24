@@ -21,10 +21,11 @@ init({Channel,Q,Master}) ->
 main_loop(Chn,Q,Master,Ct) ->
 	receive
 		#'basic.consume_ok'{consumer_tag=NCt} ->
-      %lager:info("[~p] Consumer binded OK",[self()]),
+      lager:info("[~p] Consumer binded OK",[self()]),
       main_loop(Chn,Q,Master,NCt);
 		#'basic.cancel_ok'{} ->
-      %lager:info("[~p] Consumer canceled",[self()]),
+      lager:info("[~p] Consumer canceled",[self()]),
+      Master ! cancel_ok,
       ok;
 		{#'basic.deliver'{ consumer_tag=NCt, delivery_tag = Tag}, Content} ->
 
@@ -38,6 +39,8 @@ main_loop(Chn,Q,Master,Ct) ->
 		
 		exit ->
       rbbt_utils:unsubscribe(Chn, Ct),
-      %lager:error("[~p] Consumer cancel rcvd",[self()]),
-      main_loop(Chn,Q,Master,Ct)
+      lager:error("[~p] Consumer cancel rcvd",[self()]),
+      main_loop(Chn,Q,Master,Ct) ;
+    M -> lager:info("UUUUNKON ~p",[M]),
+          main_loop(Chn,Q,Master,Ct)
 	end.

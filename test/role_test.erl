@@ -85,7 +85,7 @@ create_conersation_test()->
               %_ -> error
            end,
 
-%  role:stop(Return),
+  role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -100,7 +100,6 @@ ready_test()->
 
   %TODO: Black Magic
   Spec = data_utils:spec_create(tete_client, tete, [], undef, NRefOrg, [], undef, undef),
-  %Spec = data_utils:spec_create(bid_sebay, client, [], undef, self(), [], undef, undef),
 
   State = #role_data{ spec = Spec },
   {ok, Return} = role:start_link("../resources/",State),
@@ -113,7 +112,7 @@ ready_test()->
               M -> M
               %_ -> error
            end,
-  %role:stop(Return),
+  role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -142,7 +141,7 @@ send_message_test() ->
 
   role:send(Return, recv, request_item,jejje),
 
-  %role:stop(Return),
+  role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -287,8 +286,6 @@ aux_method2() ->
 
 
 download_test()->
-  lager:start(),
-
   NRefOrg = spawn_link(?MODULE, download_method_client, [self()]),
 
   db_utils:install(node(), "../db/"),

@@ -118,6 +118,8 @@ init({Path, State}) ->
   NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
 
+  erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+
   {ok, NArgs}.
 
 
@@ -222,9 +224,7 @@ handle_cast({confirm,Role},State) ->
 
         false ->lager:error("[~p] Timeout",[self()]),
                 bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
-          lager:error("[~p] Timeout",[self()]),
                 gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
-          lager:error("[~p] Timeout",[self()]),
                 role:'end'(self(),"time_out waiting for confirmation")
 	end,
 	{noreply, State};
@@ -302,9 +302,9 @@ handle_cast({'end',_Prot},State)->
 
 	{noreply,NArgs};
 handle_cast({terminated,_Prot},State)->
-    gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
-    role:'end'(self(),State#role_data.spec#spec.protocol),
-    {noreply,State};
+  gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
+  role:'end'(self(),State#role_data.spec#spec.protocol),
+  {noreply,State};
 handle_cast({cancel,Prot},State)->
 	role:'end'(self(),Prot),
   {noreply, State};
@@ -324,8 +324,26 @@ handle_cast(_Request, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({'DOWN',Ref,process,Pid,noconnection}, State) ->
+  lager:info("Process ~p down",[Pid]),
+  role:stop(self()),
+  {noreply, State};
+handle_info({'DOWN',Ref,process,Pid,Reason}, State) ->
+  lager:info("Process ~p down reason: ~p",[Pid, Reason]),
+  role:stop(self()),
+  {noreply, State};
+handle_info({'EXIT', Pid, Reason} , State) ->
+  lager:info("Exit received ~p ~p ",[Pid, Reason]),
+  {noreply, State};
+handle_info({nodedown, Node}, State) ->
+  lager:info("NOdedown received ~p",[Node]),
+  {noreply, State};
+handle_info(timeout, State) ->
+  lager:info("Timeout received"),
+  {noreply, State};
+handle_info(Msg, State) ->
+  lager:info("Msg received ~p",[Msg]),
+  {noreply, State}.
 
 
 %% terminate/2
@@ -340,7 +358,9 @@ handle_info(_Info, State) ->
 terminate(_Reason, State) ->
 
 	State#role_data.conn#conn.active_cns ! exit,
-
+  receive
+    cancel_ok -> ok
+  end,
 
   rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
   %% Close the connection
