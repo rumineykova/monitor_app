@@ -87,6 +87,8 @@ create_conersation_test()->
 
   role:stop(Return),
 
+  %NRefOrg ! exit,
+
   ?assertEqual(ok, Return1).
 
 
@@ -113,6 +115,8 @@ ready_test()->
               %_ -> error
            end,
   role:stop(Return),
+
+  NRefOrg ! exit,
 
   ?assertEqual(ok, Return1).
 
@@ -143,6 +147,8 @@ send_message_test() ->
 
   role:stop(Return),
 
+  NRefOrg ! exit,
+
   ?assertEqual(ok, Return1).
 
 
@@ -154,6 +160,8 @@ aux_method_org(Args) ->
       aux_method_org(Args);
     {'$gen_cast', {callback,ready,{ready}}} -> Args ! ok,
       aux_method_org(Args);
+    exit ->
+      ok;
     M -> Args ! M,
       aux_method_org(Args)
   end.

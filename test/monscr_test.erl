@@ -45,7 +45,15 @@ config_test() ->
 
   %TODO: This is no like this anymore
   M = monscr:config_protocol(Mn,Pr),
-  ?assertEqual(ok, M).
+  ?assertEqual(ok, M),
+
+  R = receive
+    Resp -> Resp
+  end,
+
+  NRefOrg ! exit,
+
+  ?assertEqual(ok, R).
 
 
 
@@ -57,5 +65,10 @@ aux_method_org(Args) ->
                     aux_method_org(Args);
       {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
                     aux_method_org(Args);
-      _ -> error
+      {'$gen_cast',{callback, config_done,Reply}} -> Args ! {config_done, Reply},
+                    aux_method_org(Args);
+      exit -> ok;
+      M -> Args ! {error,M},
+                    aux_method_org(Args)
+
     end.

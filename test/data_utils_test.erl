@@ -16,11 +16,11 @@
 
 %% -record(spec,{protocol, role, roles, ref, imp_ref, funcs, projection, lines}).
 spec_test()->
-  Spc = data_utils:spec_create(pt,rl,rls,rf,mprf,[fncs],prj,ln),
-  ?assertEqual(#spec{ protocol = pt, role = rl, roles = rls, ref = rf, imp_ref = mprf, funcs = [fncs], projection = prj, lines = ln},Spc),
+  Spc = data_utils:spec_create(pt,rl,rls,mprf,[fncs],prj,ln),
+  ?assertEqual(#spec{ protocol = pt, role = rl, roles = rls,  imp_ref = mprf, funcs = [fncs], projection = prj, lines = ln},Spc),
 
-  Spc1 = data_utils:spec_update_mult(Spc, [{protocol,pt1},{role,rl1},{roles,rls1},{ref,rf1},{imp_ref,mprf1},{funcs,[fncs1]},{projection,prj1},{lines,ln1}]),
-  ?assertEqual(#spec{ protocol = pt1, role = rl1, roles = rls1, ref = rf1, imp_ref = mprf1, funcs = [fncs1], projection = prj1, lines = ln1},Spc1).
+  Spc1 = data_utils:spec_update_mult(Spc, [{protocol,pt1},{role,rl1},{roles,rls1},{imp_ref,mprf1},{funcs,[fncs1]},{projection,prj1},{lines,ln1}]),
+  ?assertEqual(#spec{ protocol = pt1, role = rl1, roles = rls1, imp_ref = mprf1, funcs = [fncs1], projection = prj1, lines = ln1},Spc1).
 
 
 %% -record(conn,{connection, active_chn, con_id, active_q, active_exc, active_cns}).
@@ -34,14 +34,14 @@ conn_test()->
 
 %% -record(lrole,{role, roles, ref, imp_ref, funcs}).
 lrole_test()->
-  Lr = data_utils:lrole_create(rl,rls,ref,impref, [funcs]),
-  ?assertEqual(#lrole{ role = rl, roles = rls, ref = ref, imp_ref = impref, funcs = [funcs]}, Lr),
+  Lr = data_utils:lrole_create(rl,rls,impref, [funcs]),
+  ?assertEqual(#lrole{ role = rl, roles = rls, imp_ref = impref, funcs = [funcs]}, Lr),
 
   Lr2 = data_utils:lrole_add_func(Lr,fc1),
-  ?assertEqual(#lrole{ role = rl, roles = rls, ref = ref, imp_ref = impref, funcs = [fc1, funcs]}, Lr2),
+  ?assertEqual(#lrole{ role = rl, roles = rls,  imp_ref = impref, funcs = [fc1, funcs]}, Lr2),
 
-  Lr1 = data_utils:lrole_update_mult(Lr, [{role, rl1},{roles, rls1},{ref, rf1},{imp_ref, mprf1},{funcs, [fc1]}]),
-  ?assertEqual(#lrole{role = rl1, roles = rls1, ref = rf1, imp_ref = mprf1, funcs = [fc1]}, Lr1).
+  Lr1 = data_utils:lrole_update_mult(Lr, [{role, rl1},{roles, rls1},{imp_ref, mprf1},{funcs, [fc1]}]),
+  ?assertEqual(#lrole{role = rl1, roles = rls1, imp_ref = mprf1, funcs = [fc1]}, Lr1).
 
 %% -record(prot_sup,{protocol, ref, roles}).
 prot_sup_test()->

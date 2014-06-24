@@ -18,15 +18,18 @@
 
 -compile(export_all).
 
+
+%TODO: this has to be in a config file
 -define(USER,  <<"test">>).
 -define(PWD,  <<"test">>).
 -define(HOST,  "94.23.60.219").
 
 
+%TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
 -define(MUST_METHODS, [{ready,2},
-                 {config_done,2},
-                 {cancel,2},
-                 {terminated,2}]).
+                       {config_done,2},
+                       {cancel,2},
+                       {terminated,2}]).
 
 %% ====================================================================
 %% API functions
@@ -492,6 +495,7 @@ manage_projection_file(Path, State)->
       Scr;
     {error, _Reason} ->
       %lager:info("Error correct path"),
+      %TODO: This has to be in a config file
       Listen = open_reception_socket(6565),
       %lager:info("socket created"),
       request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", 6565),

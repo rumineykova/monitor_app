@@ -83,7 +83,7 @@ ets_test()->
 
   ?assertEqual(bond, db_utils:ets_lookup(Name, kk)).
 
-ets_chil_test()->
+ets_child_test()->
 
   db_utils:install(node(),"db"),
 
