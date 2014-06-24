@@ -12,7 +12,7 @@
 %% ====================================================================
 %% API exports
 %% ====================================================================
--export([start_link/1,register/2,config_protocol/2]).
+-export([start_link/1,register/1,config_protocol/1,request_id/2]).
 
 
 %% ====================================================================
@@ -24,8 +24,8 @@
 %% @doc
 %%
 %% @end
-register(Name,Pid) ->
-  gen_server:call({global, Name},{register,Pid}).
+register(Pid) ->
+  gen_server:call({global, monscr},{register,Pid}).
 
 
 %% config_protocol/2
@@ -33,9 +33,13 @@ register(Name,Pid) ->
 %% @doc
 %%
 %% @end
-config_protocol(Name,Protocol) ->
-  gen_server:cast({global,Name}, {config,Protocol}).
+config_protocol(Protocol) ->
+  gen_server:cast({global,monscr}, {config,Protocol}).
 
+
+
+request_id(Protocol, Role) ->
+  gen_server:call({global, monscr}, {request_id, Protocol, Role}).
 
 
 %% ====================================================================
@@ -83,6 +87,8 @@ init(_State) ->
 handle_call({register,Id},_From,State) ->
 	{UState,Reply} = register_imp(Id, State),
 	{reply,Reply,UState};
+handle_call({request_id, Protocol, Role}, _From, State) ->
+  {reply, db_utils:ets_lookup(child, {Protocol, Role}), State};
 handle_call(_Request,_From,State)->
 	{reply,{error,bad_args},State}.
 
@@ -285,25 +291,30 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
   RImpRef = Role#lrole.imp_ref,
   RFuncs = Role#lrole.funcs,
 
-  {Result, RProblems} = case Role#lrole.ref of
-    undefined  ->
-      New_spec = data_utils:spec_create(Prot, RRole, RRoles, undef, RImpRef, RFuncs, undef, undef),
+  %TODO: error I was not allowing o start multiple roles!!!!!
+  %{Result, RProblems} = case Role#lrole.ref of
+  %  undefined  ->
+      New_spec = data_utils:spec_create(Prot, RRole, RRoles, RImpRef, RFuncs, undef, undef),
       New_role_data = data_utils:role_data_create(New_spec, undef, undef),
-      {ok,RoleId} =  role_sup:start_child(RSup, {"resources/",New_role_data}),
+
+      %TODO:Old
+      %{ok,RoleId} =  role_sup:start_child(RSup, {"resources/",New_role_data}),
+      role_sup:start_child(RSup, {"resources/",New_role_data}),
 
       %Check if the role has started correctly if not skip the insertion and display log
       %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
-      case role:get_init_state(RoleId)of
-        {ok} -> UAcc = lists:keyreplace(Role#lrole.role, 2, Acc, data_utils:lrole_update(ref, Role, RoleId)),
-                {UAcc, Problems};
+      %TODO: Old
+      %{Result, RProblems} = case role:get_init_state(RoleId)of
+      RProblems = case role:get_init_state(db_utils:ets_lookup(child,{})) of
+        {ok} ->  Problems;
         Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
-                { Acc, [{RRole,Error} | Problems]}
-      end;
+                 [{RRole,Error} | Problems]
+      end,
 
-    _ -> lager:info("[~p] already added NOT adding it again",[Role]),
-        {Acc,Problems}
-  end,
-  {Prot, RSup, Result, RProblems}.
+  %  _ -> lager:info("[~p] already added NOT adding it again",[Role]),
+  %      {Acc,Problems}
+  %end,
+  {Prot, RSup, Acc, RProblems}.
 
 
 %% generate_list/1
@@ -317,7 +328,7 @@ generate_list(State) ->
     lists:foldl(fun(Role, Acc2) ->
       [{Protocol_sup#prot_sup.protocol,
         Role#lrole.role,
-        Role#lrole.ref}|Acc2]
+        db_utils:ets_lookup(child, {Protocol_sup#prot_sup.protocol, Role#lrole.role})}|Acc2]
     end, Acc1, Protocol_sup#prot_sup.roles)
   end, [], State#internal.prot_sup).
 

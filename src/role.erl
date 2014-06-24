@@ -86,6 +86,8 @@ start_link(Path, State) ->
 %% ====================================================================
 init({Path, State}) ->
 
+  db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self()}),
+
   Role = State#role_data.spec#spec.role,
 
   %This method will load and in case of not having the file requestes it from the source
@@ -324,11 +326,11 @@ handle_cast(_Request, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info({'DOWN',Ref,process,Pid,noconnection}, State) ->
+handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
   lager:info("Process ~p down",[Pid]),
   role:stop(self()),
   {noreply, State};
-handle_info({'DOWN',Ref,process,Pid,Reason}, State) ->
+handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
   lager:info("Process ~p down reason: ~p",[Pid, Reason]),
   role:stop(self()),
   {noreply, State};
@@ -362,9 +364,9 @@ terminate(_Reason, State) ->
     cancel_ok -> ok
   end,
 
+
   rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
   %% Close the connection
-
   amqp_channel:close(State#role_data.conn#conn.active_chn),
   amqp_connection:close(State#role_data.conn#conn.connection),
   ok.

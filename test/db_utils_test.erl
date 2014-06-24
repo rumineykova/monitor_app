@@ -68,21 +68,30 @@ db_update_test()->
 
 
 
-
-
 %% ====================================================================
 %% ETS functions
 %% ====================================================================
 
 
 ets_test()->
+
+  db_utils:install(node(),"db"),
+
   Name = db_utils:ets_create(aux, [set]),
 
   db_utils:ets_insert(Name, {kk, bond}),
 
   ?assertEqual(bond, db_utils:ets_lookup(Name, kk)).
 
+ets_chil_test()->
 
+  db_utils:install(node(),"db"),
+
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
+  db_utils:ets_insert(child, {{p1,c1} , '<0.549.0>'}),
+
+  ?assertEqual( '<0.549.0>', db_utils:ets_lookup(child, {p1,c1} )).
 
 
 

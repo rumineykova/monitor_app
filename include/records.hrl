@@ -16,7 +16,7 @@
 
 -record(lrole,{role,
 		roles,
-		ref,
+%		ref,
 		imp_ref,
 		funcs}
 ).
@@ -39,7 +39,7 @@
 -record(spec,{protocol, 
 		role,
 		roles,
-		ref, 
+%		ref,
 		imp_ref,
 		funcs,
 		projection,

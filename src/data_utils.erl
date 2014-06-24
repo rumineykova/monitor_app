@@ -13,9 +13,9 @@
 %% API
 -export([prot_sup_create/3, prot_sup_update/3, prot_sup_update_mult/2, prot_sup_add_role/2]).
 -export([internal_create/3, internal_update/3, internal_add_regp/2, internal_update_mult/2]).
--export([lrole_create/5, lrole_update/3, lrole_update_mult/2, lrole_add_func/2]).
+-export([lrole_create/4, lrole_update/3, lrole_update_mult/2, lrole_add_func/2]).
 -export([role_data_create/3, role_data_update/3, role_data_update_mult/2]).
--export([spec_create/8, spec_update/3, spec_update_mult/2]).
+-export([spec_create/7, spec_update/3, spec_update_mult/2]).
 -export([conn_create/6, conn_update/3, conn_update_mult/2]).
 -export([func_create/2, func_update/3]).
 -export([exc_create/2, exc_update/3]).
@@ -39,17 +39,14 @@ lrole_update(role, Lrole, Role)->
   Lrole#lrole{ role = Role };
 lrole_update(roles, Lrole, Roles) ->
   Lrole#lrole{ roles = Roles };
-lrole_update(ref, Lrole, Ref) ->
-  Lrole#lrole{ ref = Ref };
 lrole_update(imp_ref, Lrole, Pid) ->
   Lrole#lrole{ imp_ref = Pid };
 lrole_update(funcs, Lrole, Funcs) ->
   Lrole#lrole{ funcs = Funcs }.
 
-lrole_create(Role, Roles, Ref, Pid, Funcs) when is_list(Funcs)->
+lrole_create(Role, Roles, Pid, Funcs) when is_list(Funcs)->
   #lrole{role = Role,
          roles = Roles,
-         ref = Ref,
          imp_ref=Pid,
          funcs=Funcs}.
 
@@ -143,8 +140,6 @@ spec_update(funcs, Spec, Val) when is_list(Val) ->
   Spec#spec{ funcs = Val };
 spec_update(imp_ref, Spec, Val) ->
   Spec#spec{ imp_ref = Val };
-spec_update(ref, Spec, Val) ->
-  Spec#spec{ ref = Val };
 spec_update(roles, Spec, Val) ->
   Spec#spec{ roles = Val };
 spec_update(role, Spec, Val) ->
@@ -152,11 +147,10 @@ spec_update(role, Spec, Val) ->
 spec_update(protocol, Spec, Val) ->
   Spec#spec{ protocol = Val }.
 
-spec_create(Prot, Role, Roles, Ref, ImpRef, Funcs, Proj, Lines) when is_list(Funcs)->
+spec_create(Prot, Role, Roles, ImpRef, Funcs, Proj, Lines) when is_list(Funcs)->
   #spec{ protocol = Prot,
          role = Role,
          roles = Roles,
-         ref = Ref,
          imp_ref = ImpRef,
          funcs = Funcs,
          projection = Proj,
