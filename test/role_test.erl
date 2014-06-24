@@ -113,7 +113,7 @@ ready_test()->
               M -> M
               %_ -> error
            end,
-  role:stop(Return),
+  %role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -142,7 +142,7 @@ send_message_test() ->
 
   role:send(Return, recv, request_item,jejje),
 
-  role:stop(Return),
+  %role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -286,9 +286,8 @@ aux_method2() ->
 
 
 
-
-
 download_test()->
+  lager:start(),
 
   NRefOrg = spawn_link(?MODULE, download_method_client, [self()]),
 
@@ -309,7 +308,7 @@ download_test()->
     %_ -> error
   end,
 
-  role:stop(Return),
+  %role:stop(Return),
 
   case  filelib:is_regular("../resources/test.scr") of
     true -> file:delete("../resources/test.scr"), ?assertEqual(true, true);
