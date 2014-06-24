@@ -18,21 +18,22 @@
 start_test() ->
   {ok, Mn} = monscr:start_link([]),
 	?assertEqual(true, is_pid(Mn) ),
-  erlang:unregister(monscr).
+  global:unregister_name(monscr).
 
 
 register_test()->
   {ok, Mn} = monscr:start_link([]),
-  {ok,Res} = monscr:register(Mn, self()),
+  ?assertEqual(true, is_pid(Mn) ),
+  {ok,Res} = monscr:register(monscr, self()),
   ?assertEqual(conf_done, Res),
-  erlang:unregister(monscr).
+  global:unregister_name(monscr).
 
 config_test() ->
 
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
 
   {ok, Mn} = monscr:start_link([]),
-  {ok, Res} = monscr:register(Mn,NRefOrg),
+  {ok, Res} = monscr:register(monscr,NRefOrg),
   ?assertEqual(conf_done, Res),
 
   Pr = {NRefOrg,{ [{bid_sebay,client,[sebay]}],

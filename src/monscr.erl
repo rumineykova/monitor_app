@@ -58,10 +58,7 @@ start_link([]) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(_State) ->
-    lager:warning("warnign"),
-    global:registered_names(),
-	Done = global:register_name(monscr,self()),
-    lager:info("Done ~p ",[Done]),
+	global:register_name(monscr,self()),
 	{ok,Main_sup} = sup_role_sup:start_link(),
   UState = data_utils:internal_create(Main_sup, [], []),
   {ok, UState}.
@@ -149,8 +146,6 @@ terminate(_Reason, _State) ->
 %% ====================================================================
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-
 
 
 

@@ -12,7 +12,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 start_stop_test() ->
-  erlang:unregister(monscr),
+  global:unregister_name(monscr),
   monscr_app:start(nano, monscr),
   %timer:sleep(1500),
   monscr_app:stop(monscr).

@@ -71,7 +71,7 @@ create_conersation_test()->
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
 
   db_utils:install(node(), "../db/"),
-  db_utils:get_table(prova1),
+  db_utils:get_table(client),
 
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
@@ -85,7 +85,7 @@ create_conersation_test()->
               %_ -> error
            end,
 
-  role:stop(Return),
+%  role:stop(Return),
 
   ?assertEqual(ok, Return1).
 
@@ -146,6 +146,18 @@ send_message_test() ->
 
   ?assertEqual(ok, Return1).
 
+
+aux_method_org(Args) ->
+  receive
+    {_,From,_} -> gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
+      aux_method_org(Args);
+    {'$gen_cast', {callback,cancel,{timeout}}} -> lager:info("timeout"), Args ! ok,
+      aux_method_org(Args);
+    {'$gen_cast', {callback,ready,{ready}}} -> Args ! ok,
+      aux_method_org(Args);
+    M -> Args ! M,
+      aux_method_org(Args)
+  end.
 
 
 
@@ -266,16 +278,6 @@ aux_method2() ->
     {_,From,_} -> gen_server:reply(From,{ok,[{sebay,2},{read,2},{terminated,2},{config_done,2},{cancel,2}]})
   end.
 
-aux_method_org(Args) ->
-    receive
-      {_,From,_} -> gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
-                    aux_method_org(Args);
-      {'$gen_cast',{timeout}} -> Args ! ok,
-                    aux_method_org(Args);
-      {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
-                    aux_method_org(Args);
-      M -> lager:info("METHOD ORG ~p",[M])
-    end.
 
 
 %% ====================================================================
