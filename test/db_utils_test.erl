@@ -31,7 +31,7 @@ db_usage_test()->
 
   role:translate_parsed_to_mnesia(TblName,Scr),
 
-  db_utils:print_db(TblName,[0]),
+  %db_utils:print_db(TblName,[0]),
 
   Insts = [{to,request_item,sebay},
     {from,response_item,sebay},

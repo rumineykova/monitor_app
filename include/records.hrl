@@ -16,10 +16,10 @@
 
 -record(lrole,{role,
 		roles,
-%		ref,
 		imp_ref,
 		funcs}
 ).
+%		ref,
 
 -record(func,{sign,
 		func}
@@ -39,12 +39,13 @@
 -record(spec,{protocol, 
 		role,
 		roles,
-%		ref,
 		imp_ref,
 		funcs,
 		projection,
     lines}
 ).
+%		ref,
+
 
 -record(conn,{connection,
 		active_chn,

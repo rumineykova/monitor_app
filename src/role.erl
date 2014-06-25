@@ -23,7 +23,7 @@
 -define(USER,  <<"test">>).
 -define(PWD,  <<"test">>).
 -define(HOST,  "94.23.60.219").
-
+-define(PORT, 65005).
 
 %TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
 -define(MUST_METHODS, [{ready,2},
@@ -234,6 +234,7 @@ handle_cast({confirm,Role},State) ->
 	end,
 	{noreply, State};
 handle_cast({ready},State) ->
+    lager:info("sending ready!!!!!!!"),
 	gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,ready,{ready}}),
   Exc = data_utils:exc_create(ready, 0),
 	{noreply, data_utils:role_data_update(exc, State, Exc)};
@@ -250,11 +251,13 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State)  ->
                              State#role_data.spec#spec.lines, State#role_data.spec#spec.role) of
 
           {ok, Num} ->  %If the messgae to be send is correct according to the protocol it is publish
-                         rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
+            lager:info("Possible error ==>> trying to publish mesage"),
+                            rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
                                                State#role_data.conn#conn.active_exc,
                                                Dest,
                                                {msg, State#role_data.spec#spec.role, Sig, Cont}
                                               ),
+                    lager:info("Possible conflig >>>>> message has been sended"),
 
                       State#role_data.exc#exc{ count = Num};
           {error} -> lager:info("[~p] error detected aborting comunication!",[self()]),
@@ -496,10 +499,11 @@ manage_projection_file(Path, State)->
     {error, _Reason} ->
       %lager:info("Error correct path"),
       %TODO: This has to be in a config file
-      Listen = open_reception_socket(6565),
+      Listen = open_reception_socket(?PORT),
       %lager:info("socket created"),
-      request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", 6565),
-      Socket =acceptor(Listen),
+      %TODO: HOw can this work in remote?
+      request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", ?PORT),
+      Socket = acceptor(Listen),
       %lager:info("request file to source"),
       download_projection_from_source(Socket, Path, FileName),
       %lager:info("file downdload"),
@@ -511,7 +515,7 @@ manage_projection_file(Path, State)->
 
 
 open_reception_socket(Port)->
-  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, false}]),
+  {ok, Listen} = gen_tcp:listen(Port, [binary, {active, false}, {reuseaddr, true}]),
   Listen.
 
 acceptor(Listen) ->
@@ -533,7 +537,7 @@ file_receiver_loop(Socket,Bs)->
   %lager:info("insie"),
   case gen_tcp:recv(Socket, 0) of
     {ok, B} -> lager:info("loop"),file_receiver_loop(Socket,[Bs, B]);
-    {error, closed} -> Bs;
+    {error, closed} -> gen_tcp:close(Socket), Bs;
     M -> lager:info("Error uknown ~p",[M])
   end.
 
@@ -667,7 +671,8 @@ find_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
   Result :: {ok, term()}.
 %% ====================================================================
 translate_parsed_to_mnesia(Role,Content)->
-    Mer = db_utils:ets_create(Role, [set]),
+    %Be careful with the value of the name of the table to avoig colisions!!!! 
+    Mer = db_utils:ets_create(tmp_table, [set]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
     fix_endings(Role,Mer,Tnum-1),
     {ok,Tnum}.

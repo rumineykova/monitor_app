@@ -15,7 +15,7 @@
 
 %% API
 -export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
--export([ets_create/2, ets_lookup/2, ets_insert/2]).
+-export([ets_create/2, ets_lookup/2, ets_insert/2, ets_delete/1]).
 
 %Might be removed ->
 -export([print_db/2]).
@@ -35,6 +35,7 @@ install(Nodes, Path)->
 
 
 get_table(TableName)->
+    lager:error("Creating table: ~p", [TableName]),
   %When create gets emptied
   lager:info("mnesia get table"),
   mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
@@ -67,6 +68,12 @@ get_table(TableName)->
 %    _ -> exist_table(Tbl,R)
 %   end.
 
+
+mnesia_delete(TbName) ->
+    case mnesia:table_info(TbName, all) of
+        M -> lager:info("~p",[M]),
+            mnesia:delete_table(TbName)
+    end.
 
 
 %% add_row/3
@@ -115,13 +122,27 @@ print_db(Tname, Ls)->
 %% ================================================================================
 
 ets_create(Name, Options) ->
-    lager:info("creating ets"),
-    ets:new(Name,Options).
+    lager:info("creating ets ~p",[ets:info(Name)]),
+    case ets:info(Name) of
+        undefined ->    R = ets:new(Name,Options),
+                        lager:info("R ~p ",[R]),R;
+        M -> lager:info("defined: ~p",[M]),
+            Name
+    end.
 
 
 ets_lookup(Mer, CName)->
-  [{_,Line}] = ets:lookup(Mer,CName),
+    lager:info("Trying to lookup ~p",[Mer]),
+    [{_,Line}] = ets:lookup(Mer,CName),
   Line.
 
 ets_insert(TbName, Content) when is_tuple(Content) ->
   ets:insert(TbName, Content).
+
+ets_delete(TbName) ->
+    case ets:info(TbName) of
+        undefnied -> ok;
+        _ -> ets:delete(TbName)
+    end.
+
+

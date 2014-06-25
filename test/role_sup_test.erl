@@ -25,7 +25,7 @@ child_test() ->
   {ok,Rs} = role_sup:start_link(),
 
   %% -record(role_data,{spec, conn, exc}).
-  Spec = data_utils:spec_create(bid_sebay, client, [sebay], undef, NRefOrg, [], undef, undef),
+  Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
   %Conn = data_utils:conn_create(none),
   Args = data_utils:role_data_create(Spec, none, none),
 

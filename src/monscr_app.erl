@@ -12,13 +12,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-  %Start the log system
-	lager:start(),
-
-  %Start the database
   db_utils:install(node(),"db"),
-
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
   %Start the monscr suppervisor  == Starts the application
   R = monscr_sup:start_link(),

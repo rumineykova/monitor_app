@@ -12,8 +12,8 @@
 %% ====================================================================
 %% API exports
 %% ====================================================================
--export([start_link/1,register/1,config_protocol/1,request_id/2]).
-
+-export([start_link/1,register/1,register/2,config_protocol/1,config_protocol/2,request_id/2,request_id/3]).
+-export([stop/1]).
 
 %% ====================================================================
 %% API functions
@@ -24,6 +24,8 @@
 %% @doc
 %%
 %% @end
+register(Process, Pid) ->
+  gen_server:call(Process, {register, Pid}).
 register(Pid) ->
   gen_server:call({global, monscr},{register,Pid}).
 
@@ -33,19 +35,27 @@ register(Pid) ->
 %% @doc
 %%
 %% @end
+config_protocol(Process, Protocol) ->
+  gen_server:cast(Process, {config,Protocol}).
 config_protocol(Protocol) ->
   gen_server:cast({global,monscr}, {config,Protocol}).
 
 
 
+request_id(Process, Protocol, Role) ->
+  gen_server:call(Process, {request_id, Protocol, Role}).
 request_id(Protocol, Role) ->
   gen_server:call({global, monscr}, {request_id, Protocol, Role}).
 
+
+stop(Process) ->
+    gen_server:cast(Process, {stop}).
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
 start_link([]) ->
+  lager:info("starting link"),
 	gen_server:start_link(?MODULE, [], []).
 
 
@@ -62,7 +72,10 @@ start_link([]) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(_State) ->
-	global:register_name(monscr,self()),
+  lager:info("starting link"),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
+  global:register_name(monscr,self()),
 	{ok,Main_sup} = sup_role_sup:start_link(),
   UState = data_utils:internal_create(Main_sup, [], []),
   {ok, UState}.
@@ -86,6 +99,7 @@ init(_State) ->
 %% ====================================================================
 handle_call({register,Id},_From,State) ->
 	{UState,Reply} = register_imp(Id, State),
+  lager:info("hosf"),
 	{reply,Reply,UState};
 handle_call({request_id, Protocol, Role}, _From, State) ->
   {reply, db_utils:ets_lookup(child, {Protocol, Role}), State};
@@ -105,11 +119,15 @@ handle_call(_Request,_From,State)->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_cast({config,{Pid,_ } = Config } , State) ->
-  lager:info("handle_caset config"),
+  lager:info("start333"),
+
+  io:format("handle_caset config"),
   {ok,UState, Reply} = config_protocol_imp(Config, State),
   lager:info("send ids list back"),
-  gen_monrcp:send(Pid, {callback, config_done,Reply}),
+  gen_monrcp:send(Pid, {callback, config_done, Reply}),
   {noreply, UState};
+handle_cast({stop},State) ->
+    {stop,normal, State};
 handle_cast(_Msg, State) ->
   {noreply, State}.
 
@@ -189,7 +207,7 @@ config_protocol_imp(Config, State)->
   case internal_create_config(Config,State) of
     {ok, UState} ->
       {NUState, RolesIds} = start_roles(UState),
-      lager:info("Roles Started ~p",[RolesIds]),
+      io:format("Roles Started ~p",[RolesIds]),
       {ok,NUState, RolesIds};
     {error,_Reason} -> {error, "[monscr.erl][config_protocol_imp] Error"}
   end.
@@ -220,11 +238,11 @@ internal_create_config(_State,_Other) ->
 %% ====================================================================
 config_prot_roles({Prot,Role,Roles}, {Pid,Protocol_sup_list}) ->
   Return = case lists:keyfind(Prot, 1, Protocol_sup_list) of
-    false -> NewRole = data_utils:lrole_create(Role, Roles, undefined, Pid, []),
+    false -> NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
              El = data_utils:prot_sup_create(Prot, undef, [NewRole]),
              [El];
     Sup_intance ->
-      NewRole = data_utils:lrole_create(Role, Roles, undefined,Pid, []),
+      NewRole = data_utils:lrole_create(Role, Roles,Pid, []),
       Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
       lists:keyreplace(Prot, 1, Protocol_sup_list, Updated_prot_sup)
   end,
@@ -268,6 +286,7 @@ config_funcs(_,_) ->
   Result :: {list(),term()}.
 %% ====================================================================
 start_roles(State) ->
+  io:format("start roles inside"),
   {UState, Problems} = lists:foldl(fun  traverse_supervisors/2, State, State#internal.prot_sup),
   Started_roles = generate_list(UState),
   {UState, {Started_roles, Problems}}.
@@ -299,13 +318,14 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
 
       %TODO:Old
       %{ok,RoleId} =  role_sup:start_child(RSup, {"resources/",New_role_data}),
+      %TODO: config file
       role_sup:start_child(RSup, {"resources/",New_role_data}),
 
       %Check if the role has started correctly if not skip the insertion and display log
       %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
       %TODO: Old
       %{Result, RProblems} = case role:get_init_state(RoleId)of
-      RProblems = case role:get_init_state(db_utils:ets_lookup(child,{})) of
+      RProblems = case role:get_init_state(db_utils:ets_lookup(child,{Prot, RRole})) of
         {ok} ->  Problems;
         Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
                  [{RRole,Error} | Problems]
