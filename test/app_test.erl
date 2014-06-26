@@ -15,5 +15,4 @@ start_stop_test() ->
   %global:unregister_name(monscr),
   monscr_app:start(nano, monscr),
   %timer:sleep(1500),
-  monscr_app:stop(monscr),
-  global:unregister_name(monscr).
+  monscr_app:stop(monscr).

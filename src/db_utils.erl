@@ -69,12 +69,6 @@ get_table(TableName)->
 %   end.
 
 
-mnesia_delete(TbName) ->
-    case mnesia:table_info(TbName, all) of
-        M -> lager:info("~p",[M]),
-            mnesia:delete_table(TbName)
-    end.
-
 
 %% add_row/3
 %% ====================================================================

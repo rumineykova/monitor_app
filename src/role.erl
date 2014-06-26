@@ -88,44 +88,40 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-
-  db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self()}),
-
-  Role = State#role_data.spec#spec.role,
-
-  %This method will load and in case of not having the file requestes it from the source
-  Scr = manage_projection_file(Path, State),
-
-  {ok, NumLines} = case db_utils:get_table(Role) of
-    {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
-    {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
-    {error, _Reason} -> erlang:exit()
-  end,
-
-
-  St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+    
+    db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self()}),
+    
+    Role = State#role_data.spec#spec.role,
+    
+    %This method will load and in case of not having the file requestes it from the source
+    Scr = manage_projection_file(Path, State),
+    
+    {ok, NumLines} = case db_utils:get_table(Role) of
+        {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
+        {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
+        {error, _Reason} -> erlang:exit()
+    end,
+    
+    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
                                     State#role_data.spec#spec.imp_ref,
                                     Role, 
                                     State#role_data.spec#spec.funcs),
-
-  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
-
-  Channel = rbbt_utils:open_channel(Connection),
+    
+    Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),Channel = rbbt_utils:open_channel(Connection),
 
 	Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
 								  Channel,
 								  Role),
 	
-	Cons = role_consumer:start_link({Channel,Q,self()}),
-
-  Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
-
-  NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
-
-  erlang:monitor(process, State#role_data.spec#spec.imp_ref),
-
-  {ok, NArgs}.
+    Cons = role_consumer:start_link({Channel,Q,self()}),
+    
+    Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
+    
+    NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
+    
+    erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+    {ok, NArgs}.
 
 
 %% handle_call/3
@@ -234,7 +230,6 @@ handle_cast({confirm,Role},State) ->
 	end,
 	{noreply, State};
 handle_cast({ready},State) ->
-    lager:info("sending ready!!!!!!!"),
 	gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,ready,{ready}}),
   Exc = data_utils:exc_create(ready, 0),
 	{noreply, data_utils:role_data_update(exc, State, Exc)};
@@ -334,12 +329,10 @@ handle_cast(_Request, State) ->
 %% ====================================================================
 handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
   lager:info("Process ~p down",[Pid]),
-  role:stop(self()),
-  {noreply, State};
+  {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
   lager:info("Process ~p down reason: ~p",[Pid, Reason]),
-  role:stop(self()),
-  {noreply, State};
+  {stop, normal, State};
 handle_info({'EXIT', Pid, Reason} , State) ->
   lager:info("Exit received ~p ~p ",[Pid, Reason]),
   {noreply, State};
@@ -364,18 +357,18 @@ handle_info(Msg, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, State) ->
-
-	State#role_data.conn#conn.active_cns ! exit,
-  receive
-    cancel_ok -> ok
-  end,
-
-
-  rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
-  %% Close the connection
-  amqp_channel:close(State#role_data.conn#conn.active_chn),
-  amqp_connection:close(State#role_data.conn#conn.connection),
-  ok.
+    
+    State#role_data.conn#conn.active_cns ! exit,
+    receive
+        cancel_ok -> ok
+    end,
+    
+    rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
+    %% Close the connection
+    
+    amqp_channel:close(State#role_data.conn#conn.active_chn),
+    amqp_connection:close(State#role_data.conn#conn.connection),
+    ok.
 
 
 %% code_change/3

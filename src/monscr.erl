@@ -55,7 +55,6 @@ stop(Process) ->
 %% Behavioural functions 
 %% ====================================================================
 start_link([]) ->
-  lager:info("starting link"),
 	gen_server:start_link(?MODULE, [], []).
 
 
@@ -72,12 +71,11 @@ start_link([]) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(_State) ->
-  lager:info("starting link"),
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
   global:register_name(monscr,self()),
-	{ok,Main_sup} = sup_role_sup:start_link(),
-  UState = data_utils:internal_create(Main_sup, [], []),
+	{ok,Main_sup} = sup_role_sup:start_link(), 
+    UState = data_utils:internal_create(Main_sup, [], []),
   {ok, UState}.
 
 %% handle_call/3
@@ -99,7 +97,6 @@ init(_State) ->
 %% ====================================================================
 handle_call({register,Id},_From,State) ->
 	{UState,Reply} = register_imp(Id, State),
-  lager:info("hosf"),
 	{reply,Reply,UState};
 handle_call({request_id, Protocol, Role}, _From, State) ->
   {reply, db_utils:ets_lookup(child, {Protocol, Role}), State};
@@ -119,11 +116,8 @@ handle_call(_Request,_From,State)->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_cast({config,{Pid,_ } = Config } , State) ->
-  lager:info("start333"),
 
-  io:format("handle_caset config"),
   {ok,UState, Reply} = config_protocol_imp(Config, State),
-  lager:info("send ids list back"),
   gen_monrcp:send(Pid, {callback, config_done, Reply}),
   {noreply, UState};
 handle_cast({stop},State) ->
@@ -143,8 +137,26 @@ handle_cast(_Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
+  lager:info("Process ~p down",[Pid]),
+  role:stop(self()),
+  {noreply, State};
+handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
+  lager:info("Process ~p down reason: ~p",[Pid, Reason]),
+  role:stop(self()),
+  {noreply, State};
+handle_info({'EXIT', Pid, Reason} , State) when Pid =:= State#internal.main_sup ->
+  lager:info("Exit From the main supervisor ~p ",[Pid, Reason]),
+  {noreply, State};
+handle_info({nodedown, Node}, State) ->
+  lager:info("NOdedown received ~p",[Node]),
+  {noreply, State};
+handle_info(timeout, State) ->
+  lager:info("Timeout received"),
+  {noreply, State};
+handle_info(Msg, State) ->
+  lager:info("Msg received ~p",[Msg]),
+  {noreply, State}.
 
 
 %% terminate/2
@@ -157,6 +169,7 @@ handle_info(_Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, _State) ->
+    global:unregister_name(monscr),
     ok.
 
 

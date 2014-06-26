@@ -20,7 +20,7 @@
 start_test() ->
   {ok, Mn} = monscr:start_link([]),
 	?assertEqual(true, is_pid(Mn) ),
-  global:unregister_name(monscr).
+    monscr:stop(Mn).
 
 
 register_test()->
@@ -28,12 +28,11 @@ register_test()->
   ?assertEqual(true, is_pid(Mn) ),
   {ok,Res} = monscr:register(self()),
   ?assertEqual(conf_done, Res),
-  global:unregister_name(monscr),
   monscr:stop(Res).
 
 config_test() ->
-  ok = file:make_dir("resources/"),
   lager:start(),
+  ok = file:make_dir("resources/"),
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
   lager:info("reach"),
 
@@ -63,7 +62,6 @@ config_test() ->
   lager:info("reach2"),
 
   NRefOrg ! exit,
-  global:unregister_name(monscr),
 
   monscr:stop(Mn),
   {config_done,{[{bid_sebay,client,P}],[]}} = R,

@@ -16,7 +16,8 @@
 
 start_test() ->
   {ok,Rs} = role_sup:start_link(),
-	?assertEqual(true,is_pid(Rs)).
+  ?assertEqual(true,is_pid(Rs)),
+  cleanup(Rs).
 
 child_test() ->
 
@@ -24,14 +25,13 @@ child_test() ->
 
   {ok,Rs} = role_sup:start_link(),
 
-  %% -record(role_data,{spec, conn, exc}).
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
-  %Conn = data_utils:conn_create(none),
   Args = data_utils:role_data_create(Spec, none, none),
 
   role_sup:start_child(Rs,{"../resources/", Args}),
 
-  ?assertEqual(true,is_pid(Rs)).
+  ?assertEqual(true,is_pid(Rs)),
+  cleanup(Rs).
 
 
 aux_method_org(Args) ->
@@ -43,4 +43,16 @@ aux_method_org(Args) ->
       {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
                     aux_method_org(Args);
       _ -> error
+    end.
+
+cleanup(Pid) ->
+    %This will kill supervisor and childs
+    unlink(Pid),
+    exit(Pid, shutdown),
+    Ref = monitor(process, Pid),
+    receive
+        {'DOWN', Ref, process, Pid, _Reason} ->
+            ok
+    after 1000 ->
+            error(exit_timeout)
     end.
