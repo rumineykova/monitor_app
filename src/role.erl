@@ -109,10 +109,10 @@ init({Path, State}) ->
     
     Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),Channel = rbbt_utils:open_channel(Connection),
 
-	Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
+    Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
 								  Channel,
 								  Role),
-	
+
     Cons = role_consumer:start_link({Channel,Q,self()}),
     
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
@@ -188,7 +188,7 @@ handle_call(_Request, _From, State) ->
 %% ====================================================================
 handle_cast({create, Src, Rand},State) ->
   %Terminating the consumer
-	State#role_data.conn#conn.active_cns ! exit,
+  role_consumer:stop(State#role_data.conn#conn.active_cns),
 
   %Form random names for the queue and exchange
 	BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ Rand),
@@ -290,7 +290,7 @@ handle_cast({msg,_Ordest,Sig,Cont}=Pc,State)  ->
   {noreply,NState};
 handle_cast({'end',_Prot},State)->
   %Terminating the consumer
-  State#role_data.conn#conn.active_cns ! exit,
+  role_consumer:stop(State#role_data.conn#conn.active_cns),
 
 	Channel = State#role_data.conn#conn.active_chn,
 
@@ -357,11 +357,8 @@ handle_info(Msg, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, State) ->
-    
-    State#role_data.conn#conn.active_cns ! exit,
-    receive
-        cancel_ok -> ok
-    end,
+
+    role_consumer:stop(State#role_data.conn#conn.active_cns),
     
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
     %% Close the connection

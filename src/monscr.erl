@@ -122,7 +122,8 @@ handle_cast({config,{Pid,_ } = Config } , State) ->
   {noreply, UState};
 handle_cast({stop},State) ->
     {stop,normal, State};
-handle_cast(_Msg, State) ->
+handle_cast(Msg, State) ->
+  lager:info("UKNOWN cast ~p",[Msg]),
   {noreply, State}.
 
 
@@ -168,7 +169,7 @@ handle_info(Msg, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
     global:unregister_name(monscr),
     ok.
 

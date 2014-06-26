@@ -67,12 +67,7 @@ consumer_test()->
       _ -> error
   end,
 
-  Pid ! exit,
-
-  Return = receive
-             cancel_ok -> ok;
-             _ -> error
-           end,
+  role_consumer:stop(Pid),
 
   ?assertEqual(ok, Return).
 
@@ -92,7 +87,6 @@ coverage_test()->
   rbbt_utils:publish_msg(Chn, bid, <<"t1">>, test),
 
   Return = rbbt_utils:manual_recv(Chn, Q),
-
 
   rbbt_utils:delete_q(Chn, t1),
   rbbt_utils:delete_exc(Chn, bid),

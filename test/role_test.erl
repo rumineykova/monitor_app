@@ -26,8 +26,7 @@ start_test()->
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
-  %db_utils:get_table(prova),
-  
+
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
 
@@ -35,7 +34,11 @@ start_test()->
 
   {ok, Return} = role:start_link("../resources/",State),
   ?assertEqual(true, is_pid(Return)),
+
+  %unlink(NRefOrg),
   role:stop(Return).
+
+
 
 prot_iterator_test() ->
     
@@ -150,6 +153,8 @@ aux_method_org(Args) ->
       {_,From,_} -> lager:info("list"), gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
                     aux_method_org(Args);
       {'$gen_cast',{timeout}} -> lager:info("timeout"), Args ! timeout,
+                    aux_method_org(Args);
+      {'$gen_cast',{callback,cancel,{timeout}}} -> lager:info("timeout"), Args ! timeout,
                     aux_method_org(Args);
       {'$gen_cast',{callback,ready,{ready}}} -> lager:info("ready"), Args ! ready,
                     aux_method_org(Args);
