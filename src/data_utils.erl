@@ -18,8 +18,9 @@
 -export([spec_create/7, spec_update/3, spec_update_mult/2]).
 -export([conn_create/6, conn_update/3, conn_update_mult/2]).
 -export([func_create/2, func_update/3]).
--export([exc_create/2, exc_update/3]).
+-export([exc_create/3, exc_update/3,exc_update_mult/2]).
 -export([row_create/2, row_update/3]).
+-export([save_point_create/2,save_point_update/3]).
 %% ====================================================================
 %% LROLE
 %% -record(lrole,{role, roles, ref, imp_ref, funcs}).
@@ -230,15 +231,24 @@ conn_create(Con, ActChn, ConId, ActQ, ActExc, ActCns)->
 %% ====================================================================
 
 
+exc_update_mult(Exc, ValList) when is_list(ValList) ->
+  lists:foldl(fun({Attr, Val}, Acc) ->
+    exc_update(Attr, Acc, Val)
+  end, Exc, ValList).
+
+
+exc_update(secret_number, Conn, Sn)->
+  Conn#exc{ secret_number = Sn};
 exc_update(count, Conn, Val)->
   Conn#exc{ count = Val };
 exc_update(state, Conn, Val)->
   Conn#exc{ state = Val }.
 
-exc_create(State, Count) ->
+exc_create(State, Count, SN) ->
   #exc{
         state = State,
-        count = Count
+        count = Count,
+        secret_number = SN
   }.
 
 %% ====================================================================
@@ -255,4 +265,16 @@ row_create(Num, Inst)->
   #row{
         num = Num,
         inst = Inst
+  }.
+
+
+save_point_update(secret_number, Row, Inst) ->
+  Row#save_point{ secret_number = Inst };
+save_point_update(count, Row, Num)->
+  Row#save_point{ count = Num }.
+
+save_point_create(Num, Cnt)->
+  #save_point{
+    secret_number = Num,
+    count = Cnt
   }.

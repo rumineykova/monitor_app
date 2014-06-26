@@ -72,6 +72,7 @@ get_init_state(Name)->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
+  lager:start(),
   %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, {Path,NState}, []).
@@ -91,40 +92,93 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-    
-    db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self()}),
-    
-    Role = State#role_data.spec#spec.role,
-    
-    %This method will load and in case of not having the file requestes it from the source
-    Scr = manage_projection_file(Path, State),
-    
-    {ok, NumLines} = case db_utils:get_table(Role) of
-        {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
-        {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
-        {error, _Reason} -> erlang:exit()
-    end,
-    
-    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
-                                    State#role_data.spec#spec.imp_ref,
-                                    Role, 
-                                    State#role_data.spec#spec.funcs),
-    
-    Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),Channel = rbbt_utils:open_channel(Connection),
 
-    Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
-								  Channel,
-								  Role),
+    case db_utils:ets_lookup_raw(child,{State#role_data.spec#spec.protocol, State#role_data.spec#spec.role}) of
+        [{_Key, _OPid, SavedState}] -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SavedState}),
+                recovery_init(State, SavedState);
+        []  -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
+          zero_init(Path, State)
+    end.
 
-    Cons = role_consumer:start_link({Channel,Q,self()}),
-    
-    Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
-    
-    NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St}]),
-    
-    erlang:monitor(process, State#role_data.spec#spec.imp_ref),
-    {ok, NArgs}.
+
+
+
+zero_init(Path, State) ->
+
+  lager:info("ZERO"),
+  Role = State#role_data.spec#spec.role,
+
+  %This method will load and in case of not having the file requestes it from the source
+  Scr = manage_projection_file(Path, State),
+
+  {ok, NumLines} = case db_utils:get_table(Role) of
+                     {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
+                     {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
+                     {error, _Reason} -> erlang:exit()
+                   end,
+
+  St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+    State#role_data.spec#spec.imp_ref,
+    Role,
+    State#role_data.spec#spec.funcs),
+
+  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+  Channel = rbbt_utils:open_channel(Connection),
+
+  Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
+    Channel,
+    Role),
+
+  Cons = role_consumer:start_link({Channel,Q,self()}),
+
+  Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
+
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(undef, 0, undef)}]),
+
+  erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+  {ok, NArgs}.
+
+recovery_init(State, SavedState) ->
+  lager:info("Recovery"),
+  %make sure table exists
+
+  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+  Channel = rbbt_utils:open_channel(Connection),
+
+  %Bind to the prvious q and exchange
+  {BName, Prot} = case SavedState#save_point.secret_number of
+    undef ->  lager:info("undef"), {State#role_data.spec#spec.role,
+             State#role_data.spec#spec.protocol};
+    M ->    lager:info("secre ~p",[M]),{list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ M),
+           list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ M)}
+  end,
+
+  %Declare the queue an bind it to the new exchange
+  Q = rbbt_utils:declare_q(Channel, BName),
+
+  rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
+
+  %Spawn a new consumer for the new queue
+  Cons = role_consumer:start_link({Channel,Q,self()}),
+
+  Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
+
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
+
+  erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+  {ok, NArgs}.
+
+
+
+
+
+
+
+
+
+
 
 
 %% handle_call/3
@@ -164,6 +218,7 @@ handle_call({create,_Protocol},_From,State)->
   Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
   NState = data_utils:role_data_update(conn, State, Conn),
 
+  db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
   {reply,ok,NState};
 
 handle_call({init_state}, _From, State)->
@@ -208,7 +263,8 @@ handle_cast({create, Src, Rand},State) ->
 
   %Update the State with the new data
   Conn = data_utils:conn_update_mult(State#role_data.conn, [{active_cns, Cons},{active_q, Q},{active_exc, Prot}]),
-  NState = data_utils:role_data_update(conn, State, Conn),
+  Exc = data_utils:exc_update(secret_number, State#role_data.exc, Rand),
+  NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
   %Publish the confirmation of join
 	rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
@@ -221,20 +277,24 @@ handle_cast({confirm,Role},State) ->
 	NRoles = lists:delete(Role,Roles),
 
   lager:info("[~p] Wait for confirmation ~p",[self(), NRoles]),
-	case wait_for_confirmation(NRoles) of
+	NState = case wait_for_confirmation(NRoles) of
         true -> lager:info("[~p] All roles confirmed",[self()]),
                 gen_server:cast(self(),{ready}),
-                bcast_msg_to_roles(others,State,{ready});
+                bcast_msg_to_roles(others,State,{ready}),
+                State;
 
         false ->lager:error("[~p] Timeout",[self()]),
                 bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
                 gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
-                role:'end'(self(),"time_out waiting for confirmation")
-	end,
-	{noreply, State};
+                role:'end'(self(),"time_out waiting for confirmation"),
+                Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
+                data_utils:role_data_update_mult(State, [{exc, Exc}])
+           end,
+
+	{noreply, NState};
 handle_cast({ready},State) ->
 	gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,ready,{ready}}),
-  Exc = data_utils:exc_create(ready, 0),
+  Exc = data_utils:exc_update_mult(State#role_data.exc, [{state, ready},{count, 0}]),
 	{noreply, data_utils:role_data_update(exc, State, Exc)};
 handle_cast({send,Dest,Sig,Cont} = Pc, State)  ->
 	
@@ -308,11 +368,14 @@ handle_cast({'end',_Prot},State)->
 handle_cast({terminated,_Prot},State)->
   gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
   role:'end'(self(),State#role_data.spec#spec.protocol),
-  {noreply,State};
+
+  Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
+  NState = data_utils:role_data_update_mult(State, [{exc, Exc}]),
+  {noreply,NState};
 handle_cast({cancel,Prot},State)->
 	role:'end'(self(),Prot),
   {noreply, State};
-handle_cast({stop},State)->
+handle_cast({crash},State)->
   {stop, abnormal, State};
 handle_cast({stop},State)->
   {stop, normal, State};
@@ -361,6 +424,9 @@ handle_info(Msg, State) ->
 %% ====================================================================
 terminate(_Reason, State) ->
 
+    SData = #save_point{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
+    lager:info("~p",[ets:info(child)]),
+    db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SData}),
     role_consumer:stop(State#role_data.conn#conn.active_cns),
     
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),

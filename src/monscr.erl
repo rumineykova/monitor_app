@@ -99,7 +99,7 @@ handle_call({register,Id},_From,State) ->
 	{UState,Reply} = register_imp(Id, State),
 	{reply,Reply,UState};
 handle_call({request_id, Protocol, Role}, _From, State) ->
-  {reply, db_utils:ets_lookup(child, {Protocol, Role}), State};
+  {reply, db_utils:ets_lookup_child_pid({Protocol, Role}), State};
 handle_call(_Request,_From,State)->
 	{reply,{error,bad_args},State}.
 
@@ -339,7 +339,7 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
       %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
       %TODO: Old
       %{Result, RProblems} = case role:get_init_state(RoleId)of
-      RProblems = case role:get_init_state(db_utils:ets_lookup(child,{Prot, RRole})) of
+      RProblems = case role:get_init_state(db_utils:ets_lookup_child_pid({Prot, RRole})) of
         {ok} ->  Problems;
         Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
                  [{RRole,Error} | Problems]
@@ -362,7 +362,7 @@ generate_list(State) ->
     lists:foldl(fun(Role, Acc2) ->
       [{Protocol_sup#prot_sup.protocol,
         Role#lrole.role,
-        db_utils:ets_lookup(child, {Protocol_sup#prot_sup.protocol, Role#lrole.role})}|Acc2]
+        db_utils:ets_lookup_child_pid({Protocol_sup#prot_sup.protocol, Role#lrole.role})}|Acc2]
     end, Acc1, Protocol_sup#prot_sup.roles)
   end, [], State#internal.prot_sup).
 

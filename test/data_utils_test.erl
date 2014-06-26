@@ -66,14 +66,18 @@ role_data_test()->
 
 %%  -record(exc,{state, count}).
 exc_test()->
-  Exc = data_utils:exc_create(st, ct),
-  ?assertEqual(#exc{ state = st, count = ct}, Exc),
+  Exc = data_utils:exc_create(st, ct, sn),
+  ?assertEqual(#exc{ state = st, count = ct, secret_number = sn}, Exc),
 
   Exc1 = data_utils:exc_update(state, Exc, st1),
-  ?assertEqual(#exc{ state = st1, count = ct}, Exc1),
+  ?assertEqual(#exc{ state = st1, count = ct,  secret_number = sn}, Exc1),
 
   Exc2 = data_utils:exc_update(count, Exc1, ct1),
-  ?assertEqual(#exc{ state = st1, count = ct1}, Exc2).
+  ?assertEqual(#exc{ state = st1, count = ct1,  secret_number = sn}, Exc2),
+
+  Exc3 = data_utils:exc_update(secret_number, Exc2, sn1),
+  ?assertEqual(#exc{ state = st1, count = ct1, secret_number = sn1}, Exc3).
+
 
 
 %%  -record(row, {num, inst}).

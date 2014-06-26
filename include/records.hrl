@@ -55,7 +55,8 @@
 		active_cns}).
 
 -record(exc,{state,
-		count}
+		count,
+    secret_number}
 ).
 
 
@@ -67,4 +68,8 @@
 		inst}
 ).
 
+
+-record(save_point, {secret_number,
+                    count,
+                     num_lines}).
 

@@ -15,7 +15,7 @@
 
 %% API
 -export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
--export([ets_create/2, ets_lookup/2, ets_insert/2, ets_delete/1]).
+-export([ets_create/2, ets_lookup/2,ets_lookup_raw/2, ets_insert/2, ets_delete/1,ets_lookup_child_pid/1]).
 
 %Might be removed ->
 -export([print_db/2]).
@@ -129,6 +129,14 @@ ets_lookup(Mer, CName)->
     %lager:info("Trying to lookup ~p",[Mer]),
     [{_,Line}] = ets:lookup(Mer,CName),
   Line.
+
+ets_lookup_child_pid(Key) ->
+  [{_,Pid,_}] = ets:lookup(child,Key),
+  Pid.
+
+ets_lookup_raw(Mer, CName)->
+  lager:info("Trying to lookup ~p",[Mer]),
+  ets:lookup(Mer,CName).
 
 ets_insert(TbName, Content) when is_tuple(Content) ->
   ets:insert(TbName, Content).

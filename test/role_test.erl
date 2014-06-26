@@ -30,13 +30,14 @@ start_test()->
   Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
 
-  db_utils:ets_create(child, [set, named_table, public, {keypos,1}, {write_concurrency, false},{read_concurrency, true}]),
-
+  child = db_utils:ets_create(child, [set, named_table, public, {keypos,1}, {write_concurrency, false},{read_concurrency, true}]),
+  db_utils:ets_insert(child,{{test,et},0,#save_point{}}),
   {ok, Return} = role:start_link("../resources/",State),
   ?assertEqual(true, is_pid(Return)),
 
   %unlink(NRefOrg),
-  role:stop(Return).
+  %role:stop(Return),
+  cleanup(Return).
 
 
 
@@ -69,8 +70,10 @@ wait_for_confirmation_test()->
 
 
 create_conersation_test()->
-    
-    NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
+  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -89,12 +92,17 @@ create_conersation_test()->
       NRefOrg ! exit,
       
       ?assertEqual(timeout, Return1),
-      role:stop(Return).
+      %role:stop(Return),
+      cleanup(Return).
+
+
 
 
 ready_test()->
-    
-    NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
+  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -116,12 +124,13 @@ ready_test()->
       NRefOrg ! exit,
       
       ?assertEqual(ready, Return1),
-      role:stop(Return).
+      cleanup(Return).
 
 
 send_message_test() ->
-    
-    NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
+  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -145,7 +154,7 @@ send_message_test() ->
       role:send(Return, recv, request_item,jejje),
       
       NRefOrg ! exit,
-      role:stop(Return).
+      cleanup(Return).
 
 aux_method_org(Args) ->
     lager:info("here"),
@@ -298,6 +307,9 @@ aux_method2() ->
 %% ====================================================================
 
 download_test()->
+
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+
   NRefOrg = spawn_link(?MODULE, download_method_client, [self()]),
 
   db_utils:install(node(), "db/"),
@@ -322,7 +334,8 @@ download_test()->
   case  filelib:is_regular("../resources/test.scr") of
     true -> file:delete("../resources/test.scr"), ?assertEqual(true, true);
     _ -> ?assertEqual(true, false)
-  end.
+  end,
+  cleanup(Return).
 
 
 download_method_client(Args) ->
@@ -348,6 +361,23 @@ download_method_client(Args) ->
 %% ====================================================================
 %% Auxiliar functions
 %% ====================================================================
+
+
+cleanup(Pid) ->
+  %This will kill supervisor and childs
+  unlink(Pid),
+  Ref = monitor(process, Pid),
+  %exit(Pid, shutdown),
+  role:stop(Pid),
+  receive
+    {'DOWN', Ref2, process, Pid2, _Reason} ->
+      ok
+  after 4000 ->
+    error(exit_timeout)
+  end,
+  lager:info("deleting table ~p",[ets:info(child)]),
+  ets:delete(child).
+
 
 mytokens(Word) ->
   case Word of
