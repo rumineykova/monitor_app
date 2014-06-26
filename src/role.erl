@@ -49,6 +49,9 @@ send(Name, Destination, Signature, Content) ->
 stop(Name)->
   gen_server:cast(Name,{stop}).
 
+crash(Name) ->
+  gen_server:cast(Name, {crash}).
+
 get_init_state(Name)->
   gen_server:call(Name, {init_state}).
 
@@ -246,13 +249,11 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State)  ->
                              State#role_data.spec#spec.lines, State#role_data.spec#spec.role) of
 
           {ok, Num} ->  %If the messgae to be send is correct according to the protocol it is publish
-            lager:info("Possible error ==>> trying to publish mesage"),
                             rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
                                                State#role_data.conn#conn.active_exc,
                                                Dest,
                                                {msg, State#role_data.spec#spec.role, Sig, Cont}
                                               ),
-                    lager:info("Possible conflig >>>>> message has been sended"),
 
                       State#role_data.exc#exc{ count = Num};
           {error} -> lager:info("[~p] error detected aborting comunication!",[self()]),
@@ -311,6 +312,8 @@ handle_cast({terminated,_Prot},State)->
 handle_cast({cancel,Prot},State)->
 	role:'end'(self(),Prot),
   {noreply, State};
+handle_cast({stop},State)->
+  {stop, abnormal, State};
 handle_cast({stop},State)->
   {stop, normal, State};
 handle_cast(_Request, State) ->
