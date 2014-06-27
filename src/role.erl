@@ -92,12 +92,13 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-
+    lager:info("INIT"),
     case db_utils:ets_lookup_raw(child,{State#role_data.spec#spec.protocol, State#role_data.spec#spec.role}) of
         [{_Key, _OPid, SavedState}] -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SavedState}),
                 recovery_init(State, SavedState);
-        []  -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
-          zero_init(Path, State)
+        []  -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), data_utils:save_point_create(undef,0,undef)}),
+          zero_init(Path, State);
+        M -> lager:info("~p",[M]), error
     end.
 
 
@@ -137,9 +138,10 @@ zero_init(Path, State) ->
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(undef, 0, undef)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+  lager:info("zerodone"),
   {ok, NArgs}.
 
-recovery_init(State, SavedState) ->
+recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= undef->
   lager:info("Recovery"),
   %make sure table exists
 
@@ -147,34 +149,59 @@ recovery_init(State, SavedState) ->
   Channel = rbbt_utils:open_channel(Connection),
 
   %Bind to the prvious q and exchange
-  {BName, Prot} = case SavedState#save_point.secret_number of
-    undef ->  lager:info("undef"), {State#role_data.spec#spec.role,
-             State#role_data.spec#spec.protocol};
-    M ->    lager:info("secre ~p",[M]),{list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ M),
-           list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ M)}
-  end,
+  lager:info("undef"),
+  BName = State#role_data.spec#spec.role,
+  Prot =  State#role_data.spec#spec.protocol,
 
   %Declare the queue an bind it to the new exchange
-  Q = rbbt_utils:declare_q(Channel, BName),
+  lager:info("~p",[BName]),
+  lager:info("~p",[Prot]),
+  Q = rbbt_utils:bind_to_global_exchange(Prot, Channel, BName),
 
-  rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
-
+  lager:info("consumer"),
   %Spawn a new consumer for the new queue
   Cons = role_consumer:start_link({Channel,Q,self()}),
 
+  lager:info("create conn"),
+  Conn = data_utils:conn_create(Connection, Channel, undef, Q, Prot, Cons),
+  lager:info("create specs"),
+
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
+
+  erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+  {ok, NArgs};
+recovery_init(State, SavedState) ->
+  lager:info("Recovery"),
+  %make sure table exists
+
+  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+  Channel = rbbt_utils:open_channel(Connection),
+
+  lager:info("secre ~p",[SavedState#save_point.secret_number]),
+
+  BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#save_point.secret_number),
+  Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#save_point.secret_number),
+  %Declare the queue an bind it to the new exchange
+  lager:info("~p",[BName]),
+  Q = rbbt_utils:declare_q(Channel, BName),
+
+  lager:info("~p",[Prot]),
+  rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, Channel),
+
+  lager:info("consumer"),
+  %Spawn a new consumer for the new queue
+  Cons = role_consumer:start_link({Channel,Q,self()}),
+
+  lager:info("create conn"),
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
+  lager:info("create specs"),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs}.
-
-
-
-
-
-
 
 
 
@@ -217,8 +244,8 @@ handle_call({create,_Protocol},_From,State)->
   % Update State with the new data
   Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
   NState = data_utils:role_data_update(conn, State, Conn),
-
-  db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
+  lager:info("Call create done"),
+  %db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
   {reply,ok,NState};
 
 handle_call({init_state}, _From, State)->
@@ -267,6 +294,7 @@ handle_cast({create, Src, Rand},State) ->
   NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
   %Publish the confirmation of join
+  lager:warning("message puslibhs wait for should be next"),
 	rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
 
 	{noreply, NState};
@@ -425,7 +453,7 @@ handle_info(Msg, State) ->
 terminate(_Reason, State) ->
 
     SData = #save_point{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
-    lager:info("~p",[ets:info(child)]),
+    lager:info("SDATA ~p",[SData]),
     db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SData}),
     role_consumer:stop(State#role_data.conn#conn.active_cns),
     

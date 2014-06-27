@@ -33,7 +33,6 @@ register_test()->
 config_test() ->
   lager:start(),
 
-
   db_utils:install(node(),"db"),
 
   case file:make_dir("resources/") of

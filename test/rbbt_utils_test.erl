@@ -16,6 +16,7 @@
 -define(PWD,<<"test">>).
 -define(HOST,"94.23.60.219").
 
+-compile([{parse_transform, lager_transform}]).
 
 
 general_test() ->
@@ -64,7 +65,7 @@ consumer_test()->
 
   Return = receive
      {'$gen_cast',test} -> ok;
-      _ -> error
+      M -> lager:info("~p",[M]),error
   end,
 
   role_consumer:stop(Pid),

@@ -20,7 +20,7 @@
 -export([func_create/2, func_update/3]).
 -export([exc_create/3, exc_update/3,exc_update_mult/2]).
 -export([row_create/2, row_update/3]).
--export([save_point_create/2,save_point_update/3]).
+-export([save_point_create/3,save_point_update/3]).
 %% ====================================================================
 %% LROLE
 %% -record(lrole,{role, roles, ref, imp_ref, funcs}).
@@ -268,13 +268,16 @@ row_create(Num, Inst)->
   }.
 
 
+save_point_update(num_lines, Row, Nl) ->
+  Row#save_point{ secret_number = Nl };
 save_point_update(secret_number, Row, Inst) ->
   Row#save_point{ secret_number = Inst };
 save_point_update(count, Row, Num)->
   Row#save_point{ count = Num }.
 
-save_point_create(Num, Cnt)->
+save_point_create(Num, Cnt, Nl)->
   #save_point{
     secret_number = Num,
-    count = Cnt
+    count = Cnt,
+    num_lines = Nl
   }.

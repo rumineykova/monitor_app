@@ -1,0 +1,17 @@
+local protocol bid_cl at sb(role cl, role sb) {
+	request_item(string) from cl;
+	rec checkPoint{
+		response_item(string) to cl;
+		choice at cl{
+			makebid() from cl;
+			send_newPrice(int) from cl;
+			choice at sb{
+				lower() to cl;
+				continue checkPoint;
+			}or{
+				accept() to cl;
+				send_update(string) to cl;
+			}
+		}or{
+			nobid() from cl;
+}}}
