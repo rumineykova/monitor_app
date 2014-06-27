@@ -21,9 +21,12 @@
 -export([exc_create/3, exc_update/3,exc_update_mult/2]).
 -export([row_create/2, row_update/3]).
 -export([save_point_create/3,save_point_update/3]).
+
+
+
 %% ====================================================================
 %% LROLE
-%% -record(lrole,{role, roles, ref, imp_ref, funcs}).
+%% -record(lrole,{role, roles, imp_ref, funcs}).
 %% ====================================================================
 
 lrole_update_mult(Lrole, List) when is_list(List) ->
@@ -124,7 +127,7 @@ role_data_create(Spec, Conn, Exc) ->
 
 %% ====================================================================
 %% Specification of a Role
-%% -record(spec,{protocol, role, roles, ref, imp_ref, funcs, projection, lines}).
+%% -record(spec,{protocol, role, roles, imp_ref, funcs, projection, lines}).
 %% ====================================================================
 
 spec_update_mult(Spec, ValList) when is_list(ValList) ->
@@ -227,7 +230,7 @@ conn_create(Con, ActChn, ConId, ActQ, ActExc, ActCns)->
 
 %% ====================================================================
 %% Current execution data structure (protocol state)
-%%  -record(exc,{state, count}).
+%%  -record(exc,{state, count, secret_number}).
 %% ====================================================================
 
 
@@ -267,6 +270,12 @@ row_create(Num, Inst)->
         inst = Inst
   }.
 
+
+
+%% ====================================================================
+%% Database row for protocols
+%% -record(save_point, {secret_number, count, num_lines}).
+%% ====================================================================
 
 save_point_update(num_lines, Row, Nl) ->
   Row#save_point{ secret_number = Nl };

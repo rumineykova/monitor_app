@@ -10,17 +10,18 @@
 -author("fo713").
 
 %% API
--export([aux_method_org/1]).
+-export([aux_method_org/1, mytokens/1]).
 
 -compile([{parse_transform, lager_transform}]).
 
 
 aux_method_org(Args) ->
-  lager:info("here"),
   receive
     {_,From,_} -> gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
       aux_method_org(Args);
     {'$gen_cast',{timeout}} -> Args ! timeout,
+      aux_method_org(Args);
+    {'$gen_cast',{callback,cancel,{timeout}}} -> Args ! timeout,
       aux_method_org(Args);
     {'$gen_cast',{callback,ready,{ready}}} -> Args ! ready,
       aux_method_org(Args);
@@ -41,4 +42,36 @@ aux_method_org(Args) ->
     M -> lager:info("unkown ~p",[M]), Args ! {error,M},
       aux_method_org(Args)
 
+  end.
+
+mytokens(Word) ->
+  case Word of
+    'and' -> true;
+    as -> true;
+    at -> true;
+    by -> true;
+    'catch' -> true;
+    choice -> true;
+    continue -> true;
+    econtinue -> true;
+    create -> true;
+    do -> true;
+    enter -> true;
+    from -> true;
+    global -> true;
+    import -> true;
+    instantiates -> true;
+    interruptible -> true;
+    local -> true;
+    'or' -> true;
+    par -> true;
+    protocol -> true;
+    rec -> true;
+    erec -> true;
+    role -> true;
+    spawns -> true;
+    throw -> true;
+    to -> true;
+    with -> true;
+    _ -> false
   end.

@@ -20,6 +20,8 @@
 %Might be removed ->
 -export([print_db/2]).
 
+
+
 install(Nodes, Path)->
 
   %Set the directory to store the file for the data base
@@ -27,10 +29,8 @@ install(Nodes, Path)->
   application:set_env(mnesia, dir, Path),
 
   mnesia:create_schema([Nodes]),
-  %lager:info("[~p][install] Schmea created",[?MODULE]),
 
   application:start(mnesia).
-  %lager:info("[~p][install] Mnesia started",[?MODULE]).
 
 
 
@@ -77,7 +77,6 @@ get_table(TableName)->
   Result :: term().
 %% ====================================================================
 add_row(TbName, Num, Instr)->
-  %lager:info("[~p] Add row to ~p #~p int=~p",[self(),TbName,Num,Instr]),
   F = fun() ->
     mnesia:write(TbName,#row{num = Num,inst = Instr},write)
   end,
@@ -135,7 +134,6 @@ ets_lookup_child_pid(Key) ->
   Pid.
 
 ets_lookup_raw(Mer, CName)->
-  lager:info("Trying to lookup ~p",[Mer]),
   ets:lookup(Mer,CName).
 
 ets_insert(TbName, Content) when is_tuple(Content) ->

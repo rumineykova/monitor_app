@@ -33,7 +33,7 @@ cleanup(Pid) ->
     Ref = monitor(process, Pid),
     exit(Pid, shutdown),
     receive
-        {'DOWN', Ref2, process, Pid2, _Reason} ->
+        {'DOWN', Ref, process, Pid, _Reason} ->
             ok
     after 1000 ->
             error(exit_timeout)

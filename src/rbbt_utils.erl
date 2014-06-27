@@ -17,6 +17,7 @@
          connect/3, open_channel/1,manual_recv/2, delete_q/2,delete_exc/2]).
 
 
+
 connect(Host, User, Pwd) ->
   {ok, Connection} = amqp_connection:start(#amqp_params_network{username = User, password = Pwd, host=Host}),
   Connection.

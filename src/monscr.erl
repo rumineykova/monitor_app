@@ -8,11 +8,23 @@
 
 -include("records.hrl").
 
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+
+%% ====================================================================
+%% Default values in case of no config
+%% ====================================================================
+
+-define(RESOURCES_PATH,"resources/").
+
+
+
 %% ====================================================================
 %% API exports
 %% ====================================================================
--export([start_link/1,register/1,register/2,config_protocol/1,config_protocol/2,request_id/2,request_id/3]).
+%% Gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+%% Public API
+-export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/2, request_id/3]).
+%% Testing purposses
 -export([stop/1]).
 
 %% ====================================================================
@@ -42,20 +54,51 @@ config_protocol(Protocol) ->
 
 
 
+%% request_id/2
+%% ====================================================================
+%% @doc
+%%
+%% @end
 request_id(Process, Protocol, Role) ->
   gen_server:call(Process, {request_id, Protocol, Role}).
 request_id(Protocol, Role) ->
   gen_server:call({global, monscr}, {request_id, Protocol, Role}).
 
 
+%% stop/1
+%% ====================================================================
+%% @doc
+%%
+%% @end
 stop(Process) ->
     gen_server:cast(Process, {stop}).
+
+
+
+
 
 %% ====================================================================
 %% Behavioural functions 
 %% ====================================================================
+%% start_link/0
+%% ====================================================================
+%% @doc
+%% @end
+%% ====================================================================
+start_link() ->
+  start_link([]).
+
+%% start_link/1
+%% ====================================================================
+%% @doc
+%% @end
+%% ====================================================================
 start_link([]) ->
-	gen_server:start_link(?MODULE, [], []).
+	gen_server:start_link(?MODULE, [], []);
+start_link(Args) ->
+  gen_server:start_link(?MODULE, Args, []).
+
+
 
 
 %% init/1
@@ -71,12 +114,19 @@ start_link([]) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(_State) ->
+  %% Start the in ram table for preserve role states
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
+  %% Register monscr to be use globally with the names
   global:register_name(monscr,self()),
-	{ok,Main_sup} = sup_role_sup:start_link(), 
-    UState = data_utils:internal_create(Main_sup, [], []),
+
+  %% Start the supervisor for the supervisor of the roles
+	{ok,Main_sup} = sup_role_sup:start_link(),
+
+  %% Update State and finish
+  UState = data_utils:internal_create(Main_sup, [], []),
   {ok, UState}.
+
 
 %% handle_call/3
 %% ====================================================================
@@ -117,11 +167,15 @@ handle_call(_Request,_From,State)->
 %% ====================================================================
 handle_cast({config,{Pid,_ } = Config } , State) ->
 
+  %% Colling the actual implementation of the configuration
   {ok,UState, Reply} = config_protocol_imp(Config, State),
+
+  %% performing a callback to config_done in the client
   gen_monrcp:send(Pid, {callback, config_done, Reply}),
   {noreply, UState};
 handle_cast({stop},State) ->
-    {stop,normal, State};
+  %% method to stop the monscr ||| Testing purposes not suppose to be use!
+  {stop,normal, State};
 handle_cast(Msg, State) ->
   lager:info("UKNOWN cast ~p",[Msg]),
   {noreply, State}.
@@ -169,7 +223,8 @@ handle_info(Msg, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(_Reason, State) ->
+terminate(_Reason, _State) ->
+    %% Clean the registry when stop or crash
     global:unregister_name(monscr),
     ok.
 
@@ -189,8 +244,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
+
+
+
+
 %% ====================================================================
 %% Internal functions
+%%
 %% ====================================================================
 
 
@@ -310,6 +370,7 @@ traverse_supervisors(Prot_supervisor, Acc) ->
     Protocol = Prot_supervisor#prot_sup.protocol,
     Roles = Prot_supervisor#prot_sup.roles,
 
+    %TODO: move this from here
     {ok,RSup} = sup_role_sup:start_child(Acc#internal.main_sup,none),
     {_,_,NRoles,Problems} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles,[]}, Roles),
     NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
@@ -324,30 +385,24 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
   RImpRef = Role#lrole.imp_ref,
   RFuncs = Role#lrole.funcs,
 
-  %TODO: error I was not allowing o start multiple roles!!!!!
-  %{Result, RProblems} = case Role#lrole.ref of
-  %  undefined  ->
-      New_spec = data_utils:spec_create(Prot, RRole, RRoles, RImpRef, RFuncs, undef, undef),
-      New_role_data = data_utils:role_data_create(New_spec, undef, undef),
+  New_spec = data_utils:spec_create(Prot, RRole, RRoles, RImpRef, RFuncs, undef, undef),
+  New_role_data = data_utils:role_data_create(New_spec, undef, undef),
 
-      %TODO:Old
-      %{ok,RoleId} =  role_sup:start_child(RSup, {"resources/",New_role_data}),
-      %TODO: config file
-      role_sup:start_child(RSup, {"resources/",New_role_data}),
+  %Taking the resources path from the config file
+  Path = case application:get_env(kernel, resources_path) of
+           undefined -> ?RESOURCES_PATH;
+             {P} -> P
+         end,
+  role_sup:start_child(RSup,{ Path , New_role_data}),
 
-      %Check if the role has started correctly if not skip the insertion and display log
-      %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
-      %TODO: Old
-      %{Result, RProblems} = case role:get_init_state(RoleId)of
-      RProblems = case role:get_init_state(db_utils:ets_lookup_child_pid({Prot, RRole})) of
-        {ok} ->  Problems;
-        Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
-                 [{RRole,Error} | Problems]
-      end,
+  %Check if the role has started correctly if not skip the insertion and display log
+  %% %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
+  RProblems = case role:get_init_state(db_utils:ets_lookup_child_pid({Prot, RRole})) of
+                 {ok} ->  Problems;
+                 Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
+                   [{RRole,Error} | Problems]
+               end,
 
-  %  _ -> lager:info("[~p] already added NOT adding it again",[Role]),
-  %      {Acc,Problems}
-  %end,
   {Prot, RSup, Acc, RProblems}.
 
 

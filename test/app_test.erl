@@ -11,7 +11,10 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-compile([{parse_transform, lager_transform}]).
+
 start_stop_test() ->
   monscr_app:start(nano, monscr),
 
-  monscr_app:stop(monscr).
+  monscr_app:stop(monscr),
+  lager:info("EXISTS!!! >>> ~p",[ets:info(child)]).

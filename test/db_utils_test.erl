@@ -19,7 +19,7 @@
 
 db_usage_test()->
   {ok,Data} = file:read_file("../test/test_resources/client.scr"),
-  {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
+  {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
   {ok,Scr} = scribble:parse(Final),
 
   db_utils:install(node(),"db"),
@@ -27,8 +27,6 @@ db_usage_test()->
   {created, TblName} = db_utils:get_table(test_table),
 
   role:translate_parsed_to_mnesia(TblName,Scr),
-
-  %db_utils:print_db(TblName,[0]),
 
   Insts = [{to,request_item,sebay},
     {from,response_item,sebay},
@@ -100,37 +98,3 @@ ets_child_test()->
 gen_list([],_, Acc)->  Acc;
 gen_list([I | Inst], [L | Lines], Acc)->
   gen_list(Inst, Lines, [ {L, I} | Acc ]).
-
-
-
-mytokens(Word) ->
-  case Word of
-    'and' -> true;
-    as -> true;
-    at -> true;
-    by -> true;
-    'catch' -> true;
-    choice -> true;
-    continue -> true;
-    econtinue -> true;
-    create -> true;
-    do -> true;
-    enter -> true;
-    from -> true;
-    global -> true;
-    import -> true;
-    instantiates -> true;
-    interruptible -> true;
-    local -> true;
-    'or' -> true;
-    par -> true;
-    protocol -> true;
-    rec -> true;
-    erec -> true;
-    role -> true;
-    spawns -> true;
-    throw -> true;
-    to -> true;
-    with -> true;
-    _ -> false
-  end.

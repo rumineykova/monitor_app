@@ -23,6 +23,7 @@
 -define(USER,  <<"test">>).
 -define(PWD,  <<"test">>).
 -define(HOST,  "94.23.60.219").
+-define(DHOST, "localhost").
 -define(PORT, 65005).
 
 %TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
@@ -72,7 +73,6 @@ get_init_state(Name)->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
-  lager:start(),
   %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, {Path,NState}, []).
@@ -92,7 +92,6 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-    lager:info("INIT"),
     case db_utils:ets_lookup_raw(child,{State#role_data.spec#spec.protocol, State#role_data.spec#spec.role}) of
         [{_Key, _OPid, SavedState}] -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SavedState}),
                 recovery_init(State, SavedState);
@@ -115,7 +114,7 @@ zero_init(Path, State) ->
   {ok, NumLines} = case db_utils:get_table(Role) of
                      {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
                      {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
-                     {error, _Reason} -> erlang:exit()
+                     {error, _Reason} -> erlang:exit(self())
                    end,
 
   St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
@@ -123,8 +122,13 @@ zero_init(Path, State) ->
     Role,
     State#role_data.spec#spec.funcs),
 
-  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
-  Channel = rbbt_utils:open_channel(Connection),
+
+  {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
+                            undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+                              Ch = rbbt_utils:open_channel(Con),{Con, Ch};
+                            {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+                              Ch = rbbt_utils:open_channel(Con), {Con, Ch}
+                          end,
 
   Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
     Channel,
@@ -138,33 +142,30 @@ zero_init(Path, State) ->
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(undef, 0, undef)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
-  lager:info("zerodone"),
   {ok, NArgs}.
 
 recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= undef->
-  lager:info("Recovery"),
-  %make sure table exists
 
-  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
-  Channel = rbbt_utils:open_channel(Connection),
+  %TODO: make sure table exists
+
+  {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
+                            undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+                              Ch = rbbt_utils:open_channel(Con),{Con, Ch};
+                            {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+                              Ch = rbbt_utils:open_channel(Con), {Con, Ch}
+                          end,
 
   %Bind to the prvious q and exchange
-  lager:info("undef"),
   BName = State#role_data.spec#spec.role,
   Prot =  State#role_data.spec#spec.protocol,
 
   %Declare the queue an bind it to the new exchange
-  lager:info("~p",[BName]),
-  lager:info("~p",[Prot]),
   Q = rbbt_utils:bind_to_global_exchange(Prot, Channel, BName),
 
-  lager:info("consumer"),
   %Spawn a new consumer for the new queue
   Cons = role_consumer:start_link({Channel,Q,self()}),
 
-  lager:info("create conn"),
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, Prot, Cons),
-  lager:info("create specs"),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
@@ -172,30 +173,28 @@ recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= un
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs};
 recovery_init(State, SavedState) ->
-  lager:info("Recovery"),
-  %make sure table exists
 
-  Connection = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
-  Channel = rbbt_utils:open_channel(Connection),
+  %TODO: make sure table exists
 
-  lager:info("secre ~p",[SavedState#save_point.secret_number]),
+  {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
+                            undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
+                              Ch = rbbt_utils:open_channel(Con),{Con, Ch};
+                            {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+                              Ch = rbbt_utils:open_channel(Con), {Con, Ch}
+                          end,
+
 
   BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#save_point.secret_number),
   Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#save_point.secret_number),
   %Declare the queue an bind it to the new exchange
-  lager:info("~p",[BName]),
   Q = rbbt_utils:declare_q(Channel, BName),
 
-  lager:info("~p",[Prot]),
   rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, Channel),
 
-  lager:info("consumer"),
   %Spawn a new consumer for the new queue
   Cons = role_consumer:start_link({Channel,Q,self()}),
 
-  lager:info("create conn"),
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
-  lager:info("create specs"),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
@@ -235,7 +234,6 @@ handle_call({create,_Protocol},_From,State)->
 	%% NEW Exchange for the specific comunication
   rbbt_utils:declare_exc(State#role_data.conn#conn.active_chn, Prot, <<"direct">>, true),
 
-
   % Publish create message to all participiant  === JOIN CONVERSATION
   rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
                          State#role_data.conn#conn.active_exc,
@@ -244,8 +242,7 @@ handle_call({create,_Protocol},_From,State)->
   % Update State with the new data
   Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
   NState = data_utils:role_data_update(conn, State, Conn),
-  lager:info("Call create done"),
-  %db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), #save_point{ count = 0}}),
+
   {reply,ok,NState};
 
 handle_call({init_state}, _From, State)->
@@ -294,7 +291,6 @@ handle_cast({create, Src, Rand},State) ->
   NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
   %Publish the confirmation of join
-  lager:warning("message puslibhs wait for should be next"),
 	rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
 
 	{noreply, NState};
@@ -579,21 +575,25 @@ manage_projection_file(Path, State)->
   FileName = atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
 
   case file:read_file(Path ++ FileName) of
-    {ok, Binary} -> %lager:info("file already exists"),
+    {ok, Binary} ->
       {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
       {ok,Scr} = scribble:parse(Final),
       Scr;
+
     {error, _Reason} ->
-      %lager:info("Error correct path"),
-      %TODO: This has to be in a config file
-      Listen = open_reception_socket(?PORT),
-      %lager:info("socket created"),
-      %TODO: HOw can this work in remote?
-      request_file_source(State#role_data.spec#spec.imp_ref, FileName, "localhost", ?PORT),
+
+      {Host, Port} = case application:get_env(kernel, download_port) of
+        undefined -> {?DHOST, ?PORT};
+        {H,P} -> {H,P}
+      end,
+
+      Listen = open_reception_socket(Port),
+
+      request_file_source(State#role_data.spec#spec.imp_ref, FileName, Host , Port),
       Socket = acceptor(Listen),
-      %lager:info("request file to source"),
+
       download_projection_from_source(Socket, Path, FileName),
-      %lager:info("file downdload"),
+
       {ok, Binary} = file:read_file(Path ++ FileName),
       {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
       {ok,Scr} = scribble:parse(Final),
@@ -623,14 +623,14 @@ download_projection_from_source(Socket, Path, Filename) ->
 file_receiver_loop(Socket,Bs)->
   %lager:info("insie"),
   case gen_tcp:recv(Socket, 0) of
-    {ok, B} -> lager:info("loop"),file_receiver_loop(Socket,[Bs, B]);
+    {ok, B} -> file_receiver_loop(Socket,[Bs, B]);
     {error, closed} -> gen_tcp:close(Socket), Bs;
     M -> lager:info("Error uknown ~p",[M])
   end.
 
 save_file(Path, Filename,Bs) ->
   PathFile  = Path ++ Filename,
-  %lager:info("~nFilename: ~p",[PathFile]),
+
   {ok, Fd} = file:open(PathFile, write),
   file:write(Fd, Bs),
   file:close(Fd).
@@ -852,7 +852,7 @@ wait_for_confirmation([])->
 wait_for_confirmation(Roles) ->
 	receive
 		{'$gen_cast',{confirm,Role}} -> 
-            lager:info("[~p] Confirm message from ~p",[self(),Role]),
+            %lager:info("[~p] Confirm message from ~p",[self(),Role]),
             NRoles = lists:delete(Role,Roles),
 			wait_for_confirmation(NRoles);
         Msg -> lager:error("[~p] Unkonw message receive instaed of confirm,~p",[self(),Msg])

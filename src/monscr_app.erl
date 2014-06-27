@@ -15,10 +15,10 @@ start(_StartType, _StartArgs) ->
   db_utils:install(node(),"db"),
 
   %Start the monscr suppervisor  == Starts the application
-  R = monscr_sup:start_link(),
-  lager:warning(" After sup ~p", [R]),R.
+  monscr_sup:start_link().
 
 
 stop(_State) ->
-    ok.
+  ets:delete(child),
+  ok.
 

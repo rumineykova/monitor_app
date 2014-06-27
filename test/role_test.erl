@@ -16,6 +16,7 @@
 %% Internal functions
 %% ====================================================================
 
+-define(PATH,"../resources/").
 
 -define(USER,<<"test">>).
 -define(PWD,<<"test">>).
@@ -23,7 +24,7 @@
 
 start_test()->
 
-  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
 
@@ -32,7 +33,7 @@ start_test()->
 
   child = db_utils:ets_create(child, [set, named_table, public, {keypos,1}, {write_concurrency, false},{read_concurrency, true}]),
   db_utils:ets_insert(child,{{test,et},0,#save_point{}}),
-  {ok, Return} = role:start_link("../resources/",State),
+  {ok, Return} = role:start_link(?PATH,State),
   ?assertEqual(true, is_pid(Return)),
 
   %unlink(NRefOrg),
@@ -47,7 +48,7 @@ prot_iterator_test() ->
     %application:set_env(mnesia, dir, "../db/"),
 
 	{ok,Data} = file:read_file("../resources/client.scr"),
-	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
+	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
     
     db_utils:install(node(),"db"),
@@ -73,13 +74,13 @@ create_conersation_test()->
 
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
     Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
     State = #role_data{ spec = Spec },
-    {ok, Return} = role:start_link("../resources/",State),
+    {ok, Return} = role:start_link(?PATH,State),
     ?assertEqual(true, is_pid(Return)),
     
     ok = role:create(Return, bid_sebay),
@@ -102,7 +103,7 @@ ready_test()->
 
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -110,7 +111,7 @@ ready_test()->
     Spec = data_utils:spec_create(tete_client, tete, [], NRefOrg, [], undef, undef),
     
     State = #role_data{ spec = Spec },
-    {ok, Return} = role:start_link("../resources/",State),
+    {ok, Return} = role:start_link(?PATH,State),
     
     ?assertEqual(true, is_pid(Return)),
     
@@ -130,14 +131,14 @@ ready_test()->
 send_message_test() ->
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
     Spec = data_utils:spec_create(sing_test, sender, [], NRefOrg, [], undef, undef),
     
     State = #role_data{ spec = Spec },
-    {ok, Return} = role:start_link("../resources/",State),
+    {ok, Return} = role:start_link(?PATH,State),
     
     {ok} = role:get_init_state(Return),
     ?assertEqual(true, is_pid(Return)),
@@ -156,31 +157,7 @@ send_message_test() ->
       NRefOrg ! exit,
       cleanup(Return).
 
-aux_method_org(Args) ->
-    receive
-      {_,From,_} -> lager:info("list"), gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
-                    aux_method_org(Args);
-      {'$gen_cast',{timeout}} -> lager:info("timeout"), Args ! timeout,
-                    aux_method_org(Args);
-      {'$gen_cast',{callback,cancel,{timeout}}} -> lager:info("timeout"), Args ! timeout,
-                    aux_method_org(Args);
-      {'$gen_cast',{callback,ready,{ready}}} -> lager:info("ready"), Args ! ready,
-                    aux_method_org(Args);
-      {'$gen_cast',{callback, config_done,Reply}} ->lager:info("config"), Args ! {config_done, Reply},
-                    aux_method_org(Args);
 
-      {'$gen_cast',{callback,projection_request,{send, FileName, Host, Port}}} ->
-        lager:warning("FileName ~p",[FileName]),
-        {ok, Socket} = gen_tcp:connect(list_to_atom(Host), Port, [binary, {active, false}]),
-        PathFile = "../test/test_resources/" ++ FileName,
-        true = filelib:is_regular(PathFile),
-        {ok, _} = file:sendfile(PathFile, Socket),
-        ok = gen_tcp:close(Socket),
-        aux_method_org(Args);
-      exit -> lager:info("exit"), ok;
-      M -> lager:info("unkown ~p",[M]), Args ! {error,M},
-                    aux_method_org(Args)
-  end.
 
 
 
@@ -191,7 +168,7 @@ aux_method_org(Args) ->
 check_for_signatures_test() ->
     
     {ok,Data} = file:read_file("../resources/client.scr"),
-    {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
+    {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
     {ok,Scr} = scribble:parse(Final),
     
     db_utils:install(node(),"db"),
@@ -255,7 +232,7 @@ check_for_methods_4_test() ->
 check_both_test()->
 
   {ok,Data} = file:read_file("../resources/client.scr"),
-  {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun mytokens/1}]),
+  {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
   {ok,Scr} = scribble:parse(Final),
 
  db_utils:install(node(),"db"),
@@ -309,7 +286,7 @@ download_test()->
 
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(?MODULE, download_method_client, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
   db_utils:get_table(prova2),
@@ -317,7 +294,7 @@ download_test()->
   Spec = data_utils:spec_create(down_test, test, [], NRefOrg, [], undef, undef),
 
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link("../resources/",State),
+  {ok, Return} = role:start_link(?PATH,State),
 
   ?assertEqual(true, is_pid(Return)),
 
@@ -337,25 +314,6 @@ download_test()->
   cleanup(Return).
 
 
-download_method_client(Args) ->
-  receive
-    {_,From,_} -> gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
-      download_method_client(Args);
-    {'$gen_cast',{timeout}} -> Args ! ok,
-      download_method_client(Args);
-    {'$gen_cast',{callback,projection_request,{send, FileName, Host, Port}}} ->
-      lager:warning("FileName ~p",[FileName]),
-      {ok, Socket} = gen_tcp:connect(list_to_atom(Host), Port, [binary, {active, false}]),
-      PathFile = "../test/test_resources/" ++ FileName,
-      true = filelib:is_regular(PathFile),
-      {ok, _} = file:sendfile(PathFile, Socket),
-      ok = gen_tcp:close(Socket),
-      download_method_client(Args);
-    {'$gen_cast',{callback,ready,{ready}}} -> Args ! ok,
-      download_method_client(Args);
-    M -> lager:info("METHOD ORG ~p",[M])
-  end.
-
 
 %% ====================================================================
 %% Auxiliar functions
@@ -366,46 +324,13 @@ cleanup(Pid) ->
   %This will kill supervisor and childs
   unlink(Pid),
   Ref = monitor(process, Pid),
-  %exit(Pid, shutdown),
+
   role:stop(Pid),
   receive
-    {'DOWN', Ref2, process, Pid2, _Reason} ->
+    {'DOWN', Ref, process, Pid, _Reason} ->
       ok
   after 4000 ->
     error(exit_timeout)
   end,
   lager:info("deleting table ~p",[ets:info(child)]),
   ets:delete(child).
-
-
-mytokens(Word) ->
-  case Word of
-    'and' -> true;
-    as -> true;
-    at -> true;
-    by -> true;
-    'catch' -> true;
-    choice -> true;
-    continue -> true;
-    econtinue -> true;
-    create -> true;
-    do -> true;
-    enter -> true;
-    from -> true;
-    global -> true;
-    import -> true;
-    instantiates -> true;
-    interruptible -> true;
-    local -> true;
-    'or' -> true;
-    par -> true;
-    protocol -> true;
-    rec -> true;
-    erec -> true;
-    role -> true;
-    spawns -> true;
-    throw -> true;
-    to -> true;
-    with -> true;
-    _ -> false
-  end.

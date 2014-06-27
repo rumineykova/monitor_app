@@ -15,34 +15,14 @@
 -record(state, {channel,
   handler}).
 
-%%--------------------------------------------------------------------------
+%% =========================================================================
 %% API
-%%--------------------------------------------------------------------------
-
-%% @spec (Connection, Queue, RpcHandler) -> RpcServer
-%% where
-%% Connection = pid()
-%% Queue = binary()
-%% RpcHandler = function()
-%% RpcServer = pid()
-%% @doc Starts a new RPC server instance that receives requests via a
-%% specified queue and dispatches them to a specified handler function. This
-%% function returns the pid of the RPC server that can be used to stop the
-%% server.
+%% =========================================================================
 start(Args) ->
   {ok, Pid} = gen_server:start(?MODULE, Args, []),
   Pid.
 
-%% @spec (Connection, Queue, RpcHandler) -> RpcServer
-%% where
-%% Connection = pid()
-%% Queue = binary()
-%% RpcHandler = function()
-%% RpcServer = pid()
-%% @doc Starts, and links to, a new RPC server instance that receives
-%% requests via a specified queue and dispatches them to a specified
-%% handler function. This function returns the pid of the RPC server that
-%% can be used to stop the server.
+
 start_link(Args)->
   {ok, Pid} = gen_server:start_link(?MODULE,Args,[]),
   Pid.
@@ -55,15 +35,13 @@ start_link(Args)->
 stop(Pid) ->
   gen_server:call(Pid, stop, infinity).
 
-%%--------------------------------------------------------------------------
+%% =========================================================================
 %% gen_server callbacks
-%%--------------------------------------------------------------------------
-
+%% =========================================================================
 
 
 %% @private
 init({Channel,Q,Master}) ->
-  lager:start(),
   %lager:info("[~p] consumer init",[self()]),
   rbbt_utils:subscribe(Channel, Q),
   {ok, {Channel,Q,Master, none} }.
@@ -71,14 +49,14 @@ init({Channel,Q,Master}) ->
 
 %% @private
 handle_info(#'basic.consume_ok'{consumer_tag=NCt},  {Chn,Q,Master,_Ct}) ->
-      lager:info("[~p] [CONSUMER] binded OK",[self()]),
+      lager:info("[CONSUMER] binded OK"),
       {noreply, {Chn, Q, Master, NCt}};
 %% @private
 handle_info(#'basic.cancel_ok'{consumer_tag = NCT}, State) ->
-      lager:info("[~p] [CONSUMER] canceled",[self()]),
+      lager:info("[CONSUMER] canceled"),
       {stop, normal, State};
 handle_info({#'basic.deliver'{ consumer_tag=NCt, delivery_tag = Tag}, Content},  {Chn,Q,Master,_Ct}) ->
-  lager:info("[~p] CONSUMER] delivered",[self()]),
+  lager:info("[CONSUMER] delivered"),
 
   #amqp_msg{payload = Payload} = Content,
       Dpld = bert:decode(Payload),
@@ -91,18 +69,18 @@ handle_info({'DOWN', _MRef, process, _Pid, _Info}, State) ->
   lager:info("[CONSUMER] Downd"),
   {noreply, State};
 handle_info(Mse, State) ->
-  lager:info("UNKONWN CONSUMER MESSAGE ~p ",[Mse]),
+  lager:info("[CONSUMER] UNKONWN MESSAGE ~p ",[Mse]),
 {noreply, State}.
 
 %% @private
 handle_call(stop, _From, State) ->
-  lager:info("[Consumer] Shutdown called"),
-
+  lager:info("[CONSUMER] STOP called"),
   {stop, normal, ok, State}.
 
 %%--------------------------------------------------------------------------
 %% Rest of the gen_server callbacks
 %%--------------------------------------------------------------------------
+
 
 %% @private
 handle_cast(_Message, State) ->
@@ -112,9 +90,10 @@ handle_cast(_Message, State) ->
 %% Closes the channel this gen_server instance started
 %% @private
 terminate(Reason,{Chn,_Q,_Master,none})->
+  lager:info("[CONSUMER]terminating with reason ~p",[Reason]),
   ok;
 terminate(Reason,{Chn,_Q,_Master,Ct})->
-  lager:info("[CONSUMER]terminating not none ~p",[Reason]),
+  lager:info("[CONSUMER]terminating not none with reason ~p",[Reason]),
   rbbt_utils:unsubscribe(Chn, Ct),
   receive
     #'basic.cancel_ok'{ consumer_tag = N} -> lager:info("[CONSUMER] cancel ok"), ok
