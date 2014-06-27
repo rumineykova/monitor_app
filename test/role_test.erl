@@ -157,7 +157,6 @@ send_message_test() ->
       cleanup(Return).
 
 aux_method_org(Args) ->
-    lager:info("here"),
     receive
       {_,From,_} -> lager:info("list"), gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
                     aux_method_org(Args);

@@ -167,7 +167,7 @@ recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= un
   lager:info("create specs"),
 
   NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs};

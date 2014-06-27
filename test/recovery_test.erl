@@ -19,32 +19,25 @@ simple_recovery_test() ->
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
-  lager:info("Spawned"),
 
   {ok,Rs} = role_sup:start_link(),
   ?assertEqual(true,is_pid(Rs)),
-  lager:info(" euqals"),
 
   Spec = data_utils:spec_create(bid_sebay, client, [], NRefOrg, [], undef, undef),
   Args = data_utils:role_data_create(Spec, none, none),
-  lager:info(" spec"),
 
   role_sup:start_child(Rs,{"../resources/", Args}),
-  lager:info(" child"),
-
 
   Pid = db_utils:ets_lookup_child_pid({bid_sebay, client}),
   ?assertEqual(true, is_pid(Pid)),
-  lager:info("euqals ~p", [Pid]),
 
   role:crash(Pid),
 
-  timer:sleep(2000),
+  timer:sleep(1000),
 
   PidR = db_utils:ets_lookup_child_pid({bid_sebay, client}),
   ?assertEqual(true, is_pid(PidR)),
-  lager:info("euqals ~p", [PidR]),
-  timer:sleep(2000),
+  timer:sleep(1000),
 
   cleanup(Rs).
 
@@ -55,30 +48,23 @@ complex_recovery_test() ->
 
   NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
   NRefOrg2 = spawn_link(?MODULE, aux_method_org, [self()]),
-  lager:info("Spawned"),
 
   db_utils:install(node(), "db/"),
 
   {ok,Rs} = role_sup:start_link(),
   ?assertEqual(true,is_pid(Rs)),
-  lager:info(" euqals"),
 
   Spec = data_utils:spec_create(bid_cl, sb, [cl], NRefOrg, [], undef, undef),
   Args = data_utils:role_data_create(Spec, none, none),
-  lager:info(" spec"),
 
   Spec2 = data_utils:spec_create(bid_cl, cl, [sb], NRefOrg2, [], undef, undef),
   Args2 = data_utils:role_data_create(Spec2, none, none),
 
-
   role_sup:start_child(Rs,{"../resources/", Args}),
   role_sup:start_child(Rs,{"../resources/", Args2}),
-  lager:info(" child"),
 
   Pid = db_utils:ets_lookup_child_pid({bid_cl, sb}),
   ?assertEqual(true, is_pid(Pid)),
-
-  lager:info("CREATE!!! ~p", [db_utils:ets_lookup_raw(child,{bid_cl, sb})]),
 
   ok = role:create(Pid,bid_cl),
 
@@ -93,15 +79,9 @@ complex_recovery_test() ->
   end,
   role:crash(Pid),
 
-
-  lager:info("CRASH ~p", [db_utils:ets_lookup_raw(child,{bid_cl, sb})]),
-
-
   %wait to restart befor check pid again
-
   PidR = db_utils:ets_lookup_raw(child, {bid_cl, sb}),
   %?assertEqual(true, is_pid(PidR)),
-  lager:info("euqals ~p", [PidR]),
 
   timer:sleep(2000),
   NRefOrg ! exit,
@@ -125,7 +105,6 @@ cleanup(Pid) ->
 
 
 aux_method_org(Args) ->
-  lager:info("[CLIENT]here"),
   receive
     {_,From,_} -> lager:info("[CLIENT]list"), gen_server:reply(From,{ok,[{response_item,2},{lower,2},{accept,2},{send_update,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]}),
       aux_method_org(Args);
