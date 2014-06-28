@@ -117,9 +117,9 @@ print_db(Tname, Ls)->
 ets_create(Name, Options) ->
     %lager:info("creating ets ~p",[ets:info(Name)]),
     case ets:info(Name) of
-        undefined ->    R = ets:new(Name,Options);
+        undefined ->    _R = ets:new(Name,Options);
                         %lager:info("R ~p ",[R]),R;
-        M -> %lager:info("defined: ~p",[M]),
+        _M -> %lager:info("defined: ~p",[M]),
             Name
     end.
 

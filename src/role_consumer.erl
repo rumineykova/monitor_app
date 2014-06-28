@@ -12,8 +12,6 @@
   handle_cast/2, handle_info/2]).
 -export([start/1, start_link/1]).
 -export([stop/1]).
--record(state, {channel,
-  handler}).
 
 %% =========================================================================
 %% API
@@ -52,7 +50,7 @@ handle_info(#'basic.consume_ok'{consumer_tag=NCt},  {Chn,Q,Master,_Ct}) ->
       lager:info("[CONSUMER][~p] binded OK",[self()]),
       {noreply, {Chn, Q, Master, NCt}};
 %% @private
-handle_info(#'basic.cancel_ok'{consumer_tag = NCT}, State) ->
+handle_info(#'basic.cancel_ok'{}, State) ->
       lager:info("[CONSUMER] canceled"),
       {stop, normal, State};
 handle_info({#'basic.deliver'{ consumer_tag=NCt, delivery_tag = Tag}, Content},  {Chn,Q,Master,_Ct}) ->
@@ -94,9 +92,10 @@ terminate(Reason,{_Chn,_Q,_Master,none})->
   ok;
 terminate(Reason,{Chn,_Q,_Master,Ct})->
   lager:info("[CONSUMER][~p] terminating not none with reason ~p",[self(),Reason]),
+  lager:error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p",[Ct]),
   rbbt_utils:unsubscribe(Chn, Ct),
   receive
-    #'basic.cancel_ok'{ consumer_tag = N} -> lager:info("[CONSUMER] cancel ok"), ok
+    #'basic.cancel_ok'{} -> lager:info("[CONSUMER] cancel ok"), ok
   end.
 
 

@@ -56,6 +56,9 @@ crash(Name) ->
 get_init_state(Name)->
   gen_server:call(Name, {init_state}).
 
+disconnect(Name) ->
+  gen_server:call(Name, {disconnect}).
+
 %=============================================================================================================================================================
 %=============================================================================================================================================================
 
@@ -417,12 +420,9 @@ handle_cast(_Request, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
-  lager:info("Process ~p down",[Pid]),
-  {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
   lager:info("Process ~p down reason: ~p",[Pid, Reason]),
-  {stop, normal, State};
+  {norply, State};
 handle_info({'EXIT', Pid, Reason} , State) ->
   lager:info("Exit in Role received ~p ~p ",[Pid, Reason]),
   {noreply, State};
@@ -452,14 +452,30 @@ terminate(_Reason, State) ->
     SData = #save_point{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
     lager:info("SDATA ~p",[SData]),
     db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SData}),
-    role_consumer:stop(State#role_data.conn#conn.active_cns),
-    
+
+    ok = terminate_consumer(State),
+
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
     %% Close the connection
     
     amqp_channel:close(State#role_data.conn#conn.active_chn),
     amqp_connection:close(State#role_data.conn#conn.connection),
     ok.
+
+
+terminate_consumer(State)->
+
+  Pid = State#role_data.conn#conn.active_cns,
+  %role_consumer:stop(State#role_data.conn#conn.active_cns),
+  unlink(Pid),
+  Ref = monitor(process, Pid),
+  exit(Pid, shutdown),
+  receive
+    {'DOWN', Ref, process, Pid, _Reason} ->
+      ok
+  after 1000 ->
+    error(exit_timeout)
+  end.
 
 
 %% code_change/3
