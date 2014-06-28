@@ -242,12 +242,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
-
-
-
-
-
-
 %% ====================================================================
 %% Internal functions
 %%
@@ -295,7 +289,7 @@ config_protocol_imp(Config, State)->
   Conf :: {pid(), term()}.
 %% ====================================================================
 internal_create_config({Pid,{Roles_list, Function_list}}, State) when is_pid(Pid), is_list(Roles_list), is_list(Function_list)->
-      {_Pid,New_protocol_sup_list} = lists:foldl(fun config_prot_roles/2, {Pid, State#internal.prot_sup}, Roles_list),
+      {_Pid,New_protocol_sup_list} = lists:foldl(fun config_prot_roles/2, {Pid, State#internal.prot_sup, State#internal.main_sup}, Roles_list),
       {_pid,New_protocol_sup_list2} = lists:foldl(fun config_funcs/2 , {Pid,New_protocol_sup_list}, Function_list),
       {ok, data_utils:internal_update(prot_sup, State,New_protocol_sup_list2)};
 internal_create_config(_State,_Other) ->
@@ -310,11 +304,13 @@ internal_create_config(_State,_Other) ->
   Config :: {term(), atom(), list()},
   Data :: {pid(), term()}.
 %% ====================================================================
-config_prot_roles({Prot,Role,Roles}, {Pid,Protocol_sup_list}) ->
+config_prot_roles({Prot,Role,Roles}, {Pid, Protocol_sup_list, Main_sup}) ->
   Return = case lists:keyfind(Prot, 1, Protocol_sup_list) of
-    false -> NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
-             El = data_utils:prot_sup_create(Prot, undef, [NewRole]),
-             [El];
+    false ->
+      NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
+      {ok,RSup} = sup_role_sup:start_child(Main_sup,none),
+      El = data_utils:prot_sup_create(Prot, RSup, [NewRole]),
+      [El];
     Sup_intance ->
       NewRole = data_utils:lrole_create(Role, Roles,Pid, []),
       Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
@@ -367,15 +363,15 @@ start_roles(State) ->
 
 
 traverse_supervisors(Prot_supervisor, Acc) ->
-    Protocol = Prot_supervisor#prot_sup.protocol,
-    Roles = Prot_supervisor#prot_sup.roles,
+  Protocol = Prot_supervisor#prot_sup.protocol,
+  Roles = Prot_supervisor#prot_sup.roles,
+  ImpRef = Prot_supervisor#prot_sup.ref,
 
-    %TODO: move this from here
-    {ok,RSup} = sup_role_sup:start_child(Acc#internal.main_sup,none),
-    {_,_,NRoles,Problems} = lists:foldl(fun spawn_role/2,{Protocol, RSup, Roles,[]}, Roles),
-    NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
-    Almost = lists:keyreplace(Protocol, 2, Acc#internal.prot_sup, NM),
-    {data_utils:internal_update(prot_sup, Acc, Almost), Problems}.
+  %TODO: move this from here
+  {_,_,NRoles,Problems} = lists:foldl(fun spawn_role/2,{Protocol, ImpRef, Roles,[]}, Roles),
+  NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
+  Almost = lists:keyreplace(Protocol, 2, Acc#internal.prot_sup, NM),
+  {data_utils:internal_update(prot_sup, Acc, Almost), Problems}.
 
 
 
@@ -393,6 +389,7 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
            undefined -> ?RESOURCES_PATH;
              {P} -> P
          end,
+
   role_sup:start_child(RSup,{ Path , New_role_data}),
 
   %Check if the role has started correctly if not skip the insertion and display log

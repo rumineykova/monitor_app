@@ -49,7 +49,7 @@ init({Channel,Q,Master}) ->
 
 %% @private
 handle_info(#'basic.consume_ok'{consumer_tag=NCt},  {Chn,Q,Master,_Ct}) ->
-      lager:info("[CONSUMER] binded OK"),
+      lager:info("[CONSUMER][~p] binded OK",[self()]),
       {noreply, {Chn, Q, Master, NCt}};
 %% @private
 handle_info(#'basic.cancel_ok'{consumer_tag = NCT}, State) ->
@@ -89,11 +89,11 @@ handle_cast(_Message, State) ->
 
 %% Closes the channel this gen_server instance started
 %% @private
-terminate(Reason,{Chn,_Q,_Master,none})->
-  lager:info("[CONSUMER]terminating with reason ~p",[Reason]),
+terminate(Reason,{_Chn,_Q,_Master,none})->
+  lager:info("[CONSUMER][~p] terminating with reason ~p",[self(),Reason]),
   ok;
 terminate(Reason,{Chn,_Q,_Master,Ct})->
-  lager:info("[CONSUMER]terminating not none with reason ~p",[Reason]),
+  lager:info("[CONSUMER][~p] terminating not none with reason ~p",[self(),Reason]),
   rbbt_utils:unsubscribe(Chn, Ct),
   receive
     #'basic.cancel_ok'{ consumer_tag = N} -> lager:info("[CONSUMER] cancel ok"), ok

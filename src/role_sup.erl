@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([start_child/2,start_link/0,start_link/1]).
-
+-export([prep_stop/1,stop/1]).
 
 %% ====================================================================
 %% Behavioural functions 
@@ -53,6 +53,20 @@ start_child(SRef, {Path, State})->
   supervisor:start_child(SRef, [Path, State]).
 
 
+prep_stop(_) ->
+  lists:map(fun ({_,P,_,_}) -> P end, supervisor:which_children(agner_repo_server_sup)).
+
+stop(State) ->
+  stop_loop(lists:map(fun (P) -> monitor(process, P) end, State)),
+  ok.
+
+stop_loop([]) ->
+  ok;
+stop_loop([Ref|Rest]) ->
+  receive
+    {'DOWN',Ref,process,_,_} ->
+      stop_loop(Rest)
+  end.
 
 
 

@@ -45,7 +45,7 @@ config_test() ->
     ok -> ok;
     {error, eexist} -> ok
   end,
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
   {ok, Mn} = monscr:start_link([]),
 

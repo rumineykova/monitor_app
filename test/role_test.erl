@@ -16,7 +16,7 @@
 %% Internal functions
 %% ====================================================================
 
--define(PATH,"../resources/").
+-define(PATH,"../test/test_resources/").
 
 -define(USER,<<"test">>).
 -define(PWD,<<"test">>).
@@ -24,15 +24,15 @@
 
 start_test()->
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
 
-  Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
+  Spec = data_utils:spec_create(testp2, test2, [other], NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
 
   child = db_utils:ets_create(child, [set, named_table, public, {keypos,1}, {write_concurrency, false},{read_concurrency, true}]),
-  db_utils:ets_insert(child,{{test,et},0,#save_point{}}),
+
   {ok, Return} = role:start_link(?PATH,State),
   ?assertEqual(true, is_pid(Return)),
 
@@ -47,7 +47,7 @@ prot_iterator_test() ->
     %% OMG Massive error if the directdory does not exists or can't be reache, BAD_TYPE can't update!!!!!!
     %application:set_env(mnesia, dir, "../db/"),
 
-	{ok,Data} = file:read_file("../resources/client.scr"),
+	{ok,Data} = file:read_file(?PATH ++ "client.scr"),
 	{ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
 	{ok,Scr} = scribble:parse(Final),
     
@@ -78,7 +78,7 @@ create_conersation_test()->
     
     db_utils:install(node(), "db/"),
     
-    Spec = data_utils:spec_create(bid_sebay, client, [sebay], NRefOrg, [], undef, undef),
+    Spec = data_utils:spec_create(testp3, test3, [sebay], NRefOrg, [], undef, undef),
     State = #role_data{ spec = Spec },
     {ok, Return} = role:start_link(?PATH,State),
     ?assertEqual(true, is_pid(Return)),
@@ -103,7 +103,7 @@ ready_test()->
 
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -131,7 +131,7 @@ ready_test()->
 send_message_test() ->
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     
     db_utils:install(node(), "db/"),
     
@@ -167,7 +167,7 @@ send_message_test() ->
 
 check_for_signatures_test() ->
     
-    {ok,Data} = file:read_file("../resources/client.scr"),
+    {ok,Data} = file:read_file(?PATH ++ "client.scr"),
     {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
     {ok,Scr} = scribble:parse(Final),
     
@@ -186,7 +186,7 @@ check_for_signatures_test() ->
 
 
 check_for_methods_1_test() ->
-    NRef = spawn_link(fun() ->
+    NRef = spawn(fun() ->
             receive
               {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
             end
@@ -196,7 +196,7 @@ check_for_methods_1_test() ->
       ?assertEqual({ok}, M).
 
 check_for_methods_2_test() ->
-    NRef = spawn_link(fun() ->
+    NRef = spawn(fun() ->
                 receive
                     {_,From,_} -> gen_server:reply(From,{ok,[{tst,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
                 end
@@ -207,7 +207,7 @@ check_for_methods_2_test() ->
 
 
 check_for_methods_3_test() ->
-    NRef = spawn_link(fun() ->
+    NRef = spawn(fun() ->
                 receive
                     {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{redy,2},{terminated,2},{config_done,2},{cancel,2}]})
                 end
@@ -218,7 +218,7 @@ check_for_methods_3_test() ->
 
 
 check_for_methods_4_test() ->
-  NRef = spawn_link(fun() ->
+  NRef = spawn(fun() ->
     receive
       {_,From,_} -> gen_server:reply(From,{ok,[{test,2},{ready,2},{terminated,2},{config_done,2},{cancel,2}]})
     end
@@ -231,7 +231,7 @@ check_for_methods_4_test() ->
 
 check_both_test()->
 
-  {ok,Data} = file:read_file("../resources/client.scr"),
+  {ok,Data} = file:read_file(?PATH ++ "client.scr"),
   {ok,Final,_} = erl_scan:string(binary_to_list(Data),1,[{reserved_word_fun, fun test_utils:mytokens/1}]),
   {ok,Scr} = scribble:parse(Final),
 
@@ -242,25 +242,25 @@ check_both_test()->
     {error, Reason} -> lager:error("~p",[Reason])
   end,
 
-  NRef1 = spawn_link(fun aux_method1/0),
+  NRef1 = spawn(fun aux_method1/0),
 
   R1 = role:check_signatures_and_methods(protocol, NRef1, prova, [#func{ sign = send_newPrice, func = sebay }]),
 
   ?assertEqual({ok}, R1),
 
-  NRef2 = spawn_link(fun aux_method1/0),
+  NRef2 = spawn(fun aux_method1/0),
 
   R2 = role:check_signatures_and_methods(protocol, NRef2, prova,[#func{ sign = send_newP, func = sebay }]),
 
   ?assertEqual({error, signature_not_found }, R2),
 
-  NRef3 = spawn_link(fun aux_method1/0),
+  NRef3 = spawn(fun aux_method1/0),
 
   R3 = role:check_signatures_and_methods(protocol, NRef3,prova, [#func{ sign = send_newPrice, func = seb }]),
 
   ?assertEqual({error, method_not_found}, R3),
 
-  NRef4 = spawn_link(fun aux_method2/0),
+  NRef4 = spawn(fun aux_method2/0),
 
   R4 = role:check_signatures_and_methods(protocol, NRef4, prova,[#func{ sign = send_newPrice, func = sebay }]),
 
@@ -283,10 +283,9 @@ aux_method2() ->
 %% ====================================================================
 
 download_test()->
-
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
   db_utils:get_table(prova2),
@@ -294,7 +293,7 @@ download_test()->
   Spec = data_utils:spec_create(down_test, test, [], NRefOrg, [], undef, undef),
 
   State = #role_data{ spec = Spec },
-  {ok, Return} = role:start_link(?PATH,State),
+  {ok, Return} = role:start_link("../resources/",State),
 
   ?assertEqual(true, is_pid(Return)),
 

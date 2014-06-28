@@ -13,42 +13,39 @@
 
 -compile([{parse_transform, lager_transform}]).
 
--define(PATH, "../resources/").
+-define(PATH, "../test/test_resources/").
 
 simple_recovery_test() ->
-
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
   {ok,Rs} = role_sup:start_link(),
   ?assertEqual(true,is_pid(Rs)),
 
-  Spec = data_utils:spec_create(bid_sebay, client, [], NRefOrg, [], undef, undef),
+  Spec = data_utils:spec_create(testp4, test4, [], NRefOrg, [], undef, undef),
   Args = data_utils:role_data_create(Spec, none, none),
 
   role_sup:start_child(Rs,{?PATH, Args}),
 
-  Pid = db_utils:ets_lookup_child_pid({bid_sebay, client}),
+  Pid = db_utils:ets_lookup_child_pid({testp4, test4}),
   ?assertEqual(true, is_pid(Pid)),
 
   role:crash(Pid),
 
-  timer:sleep(1000),
+  timer:sleep(500),
 
-  PidR = db_utils:ets_lookup_child_pid({bid_sebay, client}),
+  PidR = db_utils:ets_lookup_child_pid({testp4, test4}),
   ?assertEqual(true, is_pid(PidR)),
-  timer:sleep(1000),
 
   cleanup(Rs).
 
 
 complex_recovery_test() ->
-
   db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
-  NRefOrg2 = spawn_link(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
+  NRefOrg2 = spawn(test_utils, aux_method_org, [self()]),
 
   db_utils:install(node(), "db/"),
 
@@ -86,16 +83,16 @@ complex_recovery_test() ->
   ?assertEqual(true, is_pid(PidR)),
 
   timer:sleep(2000),
+  cleanup(Rs),
   NRefOrg ! exit,
-  NRefOrg2 ! exit,
-  cleanup(Rs).
+  NRefOrg2 ! exit.
 
 
 cleanup(Pid) ->
   %This will kill supervisor and childs
   unlink(Pid),
-  exit(Pid, shutdown),
   Ref = monitor(process, Pid),
+  exit(Pid, shutdown),
   receive
     {'DOWN', Ref, process, Pid, _Reason} ->
       ok

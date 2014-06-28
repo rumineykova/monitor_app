@@ -20,8 +20,7 @@ start_test() ->
   cleanup(Rs).
 
 child_test() ->
-
-  NRefOrg = spawn_link(?MODULE, aux_method_org, [self()]),
+  NRefOrg = spawn(?MODULE, aux_method_org, [self()]),
 
   {ok,Rs} = role_sup:start_link(),
 
@@ -31,7 +30,8 @@ child_test() ->
   role_sup:start_child(Rs,{"../resources/", Args}),
 
   ?assertEqual(true,is_pid(Rs)),
-  cleanup(Rs).
+  cleanup(Rs),
+  NRefOrg ! exit.
 
 
 aux_method_org(Args) ->

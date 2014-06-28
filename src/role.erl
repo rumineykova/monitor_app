@@ -424,7 +424,7 @@ handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
   lager:info("Process ~p down reason: ~p",[Pid, Reason]),
   {stop, normal, State};
 handle_info({'EXIT', Pid, Reason} , State) ->
-  lager:info("Exit received ~p ~p ",[Pid, Reason]),
+  lager:info("Exit in Role received ~p ~p ",[Pid, Reason]),
   {noreply, State};
 handle_info({nodedown, Node}, State) ->
   lager:info("NOdedown received ~p",[Node]),
@@ -448,6 +448,7 @@ handle_info(Msg, State) ->
 %% ====================================================================
 terminate(_Reason, State) ->
 
+    %TODO: AM I KILLLING THE CHANNEL BEFORE ROLE_CONSUMER ENDS??????
     SData = #save_point{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
     lager:info("SDATA ~p",[SData]),
     db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SData}),

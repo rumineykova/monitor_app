@@ -16,5 +16,4 @@
 start_stop_test() ->
   monscr_app:start(nano, monscr),
 
-  monscr_app:stop(monscr),
-  lager:info("EXISTS!!! >>> ~p",[ets:info(child)]).
+  monscr_app:stop(monscr).
