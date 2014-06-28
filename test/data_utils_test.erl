@@ -92,24 +92,6 @@ row_test()->
   ?assertEqual(#row{ num = up1, inst = up2}, Row3).
 
 
-%% -record(internal,{main_sup, regp, prot_sup}).
-internal_test()->
-  Int = data_utils:internal_create('<0.66.0>',[],[]),
-
-  ?assertEqual(#internal{ main_sup = '<0.66.0>', regp = [], prot_sup = []}, Int),
-
-  Int2 = data_utils:internal_update(regp, Int, ['<0.67.0>'] ),
-  ?assertEqual(#internal{ main_sup = '<0.66.0>', regp = ['<0.67.0>'], prot_sup = []}, Int2),
-
-  Int3 = data_utils:internal_add_regp(Int2,'<0.69.0>'),
-  ?assertEqual(#internal{ main_sup = '<0.66.0>', regp = ['<0.69.0>','<0.67.0>'], prot_sup = []}, Int3),
-
-  Int5 = data_utils:internal_update(main_sup, Int, '<0.70.0>'),
-  ?assertEqual(#internal{ main_sup = '<0.70.0>', regp = [], prot_sup = []},Int5),
-
-  Int4 = data_utils:internal_update_mult(Int2,[{prot_sup, #prot_sup{}}]),
-  ?assertEqual(#internal{ main_sup = '<0.66.0>', regp = ['<0.67.0>'], prot_sup = #prot_sup{}}, Int4).
-
 
 %% -record(func,{message, func}).
 func_test()->

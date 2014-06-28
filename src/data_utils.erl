@@ -176,19 +176,19 @@ internal_update_mult(Internal, ValList) when is_list(ValList)->
 internal_add_regp(Internal, Process) ->
   internal_update(addregp, Internal , Process).
 
-internal_update(addregp, Internal, Val)->
-  Internal#internal{ regp = [Val | Internal#internal.regp] };
+%internal_update(addregp, Internal, Val)->
+%  Internal#internal{ regp = [Val | Internal#internal.regp] };
 internal_update(prot_sup, Internal, Val)->
   Internal#internal{ prot_sup = Val };
-internal_update(regp, Internal, Val)->
-  Internal#internal{ regp = Val };
+%internal_update(regp, Internal, Val)->
+%  Internal#internal{ regp = Val };
 internal_update(main_sup, Internal, Val) ->
   Internal#internal{ main_sup = Val }.
 
 internal_create( Main_sup, Regp, Prot_sup) when is_list(Regp) ->
   #internal{
     main_sup = Main_sup,
-    regp = Regp,
+%    regp = Regp,
     prot_sup = Prot_sup
   }.
 

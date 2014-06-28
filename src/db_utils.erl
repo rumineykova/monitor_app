@@ -130,11 +130,15 @@ ets_lookup(Mer, CName)->
   Line.
 
 ets_lookup_child_pid(Key) ->
-  [{_,Pid,_}] = ets:lookup(child,Key),
+  [{_,Pid,_}] = ets:lookup(child, Key),
   Pid.
 
-ets_lookup_raw(Mer, CName)->
-  ets:lookup(Mer,CName).
+ets_lookup_child_new(Key) ->
+  [#child_entry{ worker = Pid}] = ets:lookup(child,Key),
+  Pid.
+
+ets_lookup_raw(Mer, Key)->
+  ets:lookup(Mer,Key).
 
 ets_insert(TbName, Content) when is_tuple(Content) ->
   ets:insert(TbName, Content).

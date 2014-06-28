@@ -4,8 +4,18 @@
 %% Monscr related structures
 %% ---------------------------------------------------
 
+
+-record(child_entry, {id, worker, client, data}).
+-record(child_data , {protocol, role, secret_number, count, num_lines}).
+
+
+
+
+
+
+
+
 -record(internal,{main_sup,
-		regp = [],
 		prot_sup = []}
 ).
 

@@ -17,7 +17,7 @@
 
 
 start_test() ->
-
+    lager:start(),
   ifdelete(),
 
   {ok, Mn} = monscr:start_link([]),
@@ -30,8 +30,8 @@ register_test()->
   ifdelete(),
   {ok, Mn} = monscr:start_link([]),
   ?assertEqual(true, is_pid(Mn) ),
-  {ok,Res} = monscr:register(self()),
-  ?assertEqual(conf_done, Res),
+  {registered, Id} = monscr:register(Mn, self()),
+  ?assertEqual(3, Id),
 
   cleanup(Mn),
   ifdelete().
@@ -49,15 +49,18 @@ config_test() ->
 
   {ok, Mn} = monscr:start_link([]),
 
-  {ok, Res} = monscr:register(Mn, NRefOrg),
-  ?assertEqual(conf_done, Res),
+  {registered, Id} = monscr:register(Mn, NRefOrg),
+  ?assertEqual(3, Id),
 
-  Pr = {NRefOrg,{ [{bid_sebay,client,[sebay]}],
-    [{bid_sebay,client,response_item,response_item},
-      {bid_sebay,client,lower,lower},
-      {bid_sebay,client,accept,accept},
-      {bid_sebay,client,send_update,send_update}
-    ] }},
+
+
+  Role1 = {{Id, 1}, bid_seaby, client, [sebay], [{response_item,response_item},
+                                                 {lower,lower},
+                                                 {accept, accept},
+                                                 {send_update, send_update}]},
+  Roles= [Role1],
+  Pr = {NRefOrg, Roles },
+
 
   M = monscr:config_protocol(Mn,Pr),
   ?assertEqual(ok, M),

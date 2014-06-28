@@ -65,6 +65,12 @@ request_id(Protocol, Role) ->
   gen_server:call({global, monscr}, {request_id, Protocol, Role}).
 
 
+
+%get_all_processes_from({P, _X}) ->
+%  ok;
+%get_all_processes_from(P) ->
+%  ok.
+
 %% stop/1
 %% ====================================================================
 %% @doc
@@ -145,11 +151,11 @@ init(_State) ->
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
 %% ====================================================================
-handle_call({register,Id},_From,State) ->
-	{UState,Reply} = register_imp(Id, State),
-	{reply,Reply,UState};
-handle_call({request_id, Protocol, Role}, _From, State) ->
-  {reply, db_utils:ets_lookup_child_pid({Protocol, Role}), State};
+handle_call({register,Pid},_From,State) ->
+	Reply = register_imp(Pid),
+	{reply,Reply,State};
+handle_call({request_id, Id}, _From, State) ->
+  {reply, db_utils:ets_lookup_child_pid(Id), State};
 handle_call(_Request,_From,State)->
 	{reply,{error,bad_args},State}.
 
@@ -168,11 +174,11 @@ handle_call(_Request,_From,State)->
 handle_cast({config,{Pid,_ } = Config } , State) ->
 
   %% Colling the actual implementation of the configuration
-  {ok,UState, Reply} = config_protocol_imp(Config, State),
+  {ok, Reply} = config_protocol_imp(Config, State),
 
   %% performing a callback to config_done in the client
   gen_monrcp:send(Pid, {callback, config_done, Reply}),
-  {noreply, UState};
+  {noreply, State};
 handle_cast({stop},State) ->
   %% method to stop the monscr ||| Testing purposes not suppose to be use!
   {stop,normal, State};
@@ -242,6 +248,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 
+
+
+
+
+
+
+
 %% ====================================================================
 %% Internal functions
 %%
@@ -251,14 +264,15 @@ code_change(_OldVsn, State, _Extra) ->
 %% register_imp/2
 %% ====================================================================
 %% @doc The recieved Id is initialized in the data structure
--spec register_imp(Id :: pid(), State :: term()) -> Result when
+-spec register_imp(State :: term()) -> Result when
   Result :: {term(), Reply},
   Reply :: {ok, conf_done} | {error, not_pid}.
 %% ====================================================================
-register_imp(Id, State) when is_pid(Id)->
-  UState = data_utils:internal_add_regp(State, Id),
-  {UState,{ok,conf_done}};
-register_imp(_Id, State) ->
+register_imp(Pid) when is_pid(Pid)->
+  Id = 3,
+  true = db_utils:ets_insert(child, #child_entry{ id = Id, client = Pid}),
+  {registered, Id};
+register_imp(State) ->
   {State, {error, no_pid}}.
 
 
@@ -271,12 +285,21 @@ register_imp(_Id, State) ->
   Reply :: {ok, {ids, RolesIds :: list() }} |
   {error, error_creating_config}.
 %% ====================================================================
-config_protocol_imp(Config, State)->
-  case internal_create_config(Config,State) of
+config_protocol_imp({Id, Role_list}, State)->
+  %{self(), [{Id, bid_sebay,client,[sebay],Funcs}
+  %          {}]}
+
+
+  %[P] = db_utils:ets_lookup_raw(child, Id),
+
+  case internal_create_config(Role_list,State) of
     {ok, UState} ->
-      {NUState, RolesIds} = start_roles(UState),
+      Problems = start_roles(Role_list, UState),
+      RolesIds = generate_list( Id),
+
       io:format("Roles Started ~p",[RolesIds]),
-      {ok,NUState, RolesIds};
+
+      {ok, {RolesIds, Problems}};
     {error,_Reason} -> {error, "[monscr.erl][config_protocol_imp] Error"}
   end.
 
@@ -288,10 +311,13 @@ config_protocol_imp(Config, State)->
   Result :: {ok, term()} | {error, atom()},
   Conf :: {pid(), term()}.
 %% ====================================================================
-internal_create_config({Pid,{Roles_list, Function_list}}, State) when is_pid(Pid), is_list(Roles_list), is_list(Function_list)->
-      {_Pid,New_protocol_sup_list} = lists:foldl(fun config_prot_roles/2, {Pid, State#internal.prot_sup, State#internal.main_sup}, Roles_list),
-      {_pid,New_protocol_sup_list2} = lists:foldl(fun config_funcs/2 , {Pid,New_protocol_sup_list}, Function_list),
-      {ok, data_utils:internal_update(prot_sup, State,New_protocol_sup_list2)};
+internal_create_config(Roles_list, State) when is_list(Roles_list) ->
+  %{Id, [{bid_sebay,client,[sebay],Funcs}
+  %          {}]}
+
+      %% Start protocol supervisor if not exists
+      {New_protocol_sup_list, _ } = lists:foldl(fun config_prot_roles/2, {State#internal.prot_sup, State#internal.main_sup}, Roles_list),
+      {ok, data_utils:internal_update(prot_sup, State,New_protocol_sup_list)};
 internal_create_config(_State,_Other) ->
   {error, "[monscr.erl][internal_create_config] Wrong call perameters"}.
 
@@ -304,85 +330,47 @@ internal_create_config(_State,_Other) ->
   Config :: {term(), atom(), list()},
   Data :: {pid(), term()}.
 %% ====================================================================
-config_prot_roles({Prot,Role,Roles}, {Pid, Protocol_sup_list, Main_sup}) ->
+
+config_prot_roles({_Id, Prot,_Role,_Roles, _Funcs}, {Protocol_sup_list, Main_sup}) ->
   Return = case lists:keyfind(Prot, 1, Protocol_sup_list) of
     false ->
-      NewRole = data_utils:lrole_create(Role, Roles, Pid, []),
       {ok,RSup} = sup_role_sup:start_child(Main_sup,none),
-      El = data_utils:prot_sup_create(Prot, RSup, [NewRole]),
-      [El];
-    Sup_intance ->
-      NewRole = data_utils:lrole_create(Role, Roles,Pid, []),
-      Updated_prot_sup  = data_utils:prot_sup_add_role(Sup_intance, NewRole),
-      lists:keyreplace(Prot, 1, Protocol_sup_list, Updated_prot_sup)
+      El = data_utils:prot_sup_create(Prot, RSup, []),
+      [El | Protocol_sup_list];
+    _ -> Protocol_sup_list
   end,
-  {Pid,Return};
+  {Return, Main_sup};
 config_prot_roles(_, _) ->
   {error, "[monscr.erl][config_prot_roles] Wrong call parameters"}.
-
-
-%% config_funcs/2
-%% ====================================================================
-%% @doc
--spec config_funcs(Config, Data) -> Result when
-  Result :: {pid(), list()},
-  Config :: {term(), atom(), term(), atom()},
-  Data :: {pid(), term()}.
-%% ====================================================================
-config_funcs({Protocol, Role, Signature,Function},{Pid,Acc}) ->
-  Return = case lists:keyfind(Protocol, 2, Acc) of
-    false -> {error, bad_arguments};
-    M -> case lists:keyfind(Role, 2, M#prot_sup.roles) of
-           false -> {error, role_not_defined};
-           L ->
-             New_Func = data_utils:func_create(Signature, Function),
-             New = data_utils:lrole_add_func(L, New_Func),
-
-             Nprot = lists:keyreplace(Role, 2, M#prot_sup.roles, New),
-             NM = data_utils:prot_sup_update(roles, M, Nprot),
-             lists:keyreplace(Protocol, 2, Acc, NM)
-         end
-  end,
-  {Pid,Return};
-config_funcs(_,_) ->
-  {error, "[monscr.erl][config_funcs] Wrong call parameters"}.
-
 
 
 %% start_roles/1
 %% ====================================================================
 %% @doc
--spec start_roles(State :: term()) -> Result when
+-spec start_roles(State :: term(), State :: term()) -> Result when
   Result :: {list(),term()}.
 %% ====================================================================
-start_roles(State) ->
-  io:format("start roles inside"),
-  {UState, Problems} = lists:foldl(fun  traverse_supervisors/2, State, State#internal.prot_sup),
-  Started_roles = generate_list(UState),
-  {UState, {Started_roles, Problems}}.
+start_roles(Role_list, State) ->
+  lists:foldl(fun  traverse_supervisors/2, {State#internal.prot_sup, []} , Role_list).
 
 
-traverse_supervisors(Prot_supervisor, Acc) ->
-  Protocol = Prot_supervisor#prot_sup.protocol,
-  Roles = Prot_supervisor#prot_sup.roles,
-  ImpRef = Prot_supervisor#prot_sup.ref,
+traverse_supervisors({Id, Protocol, Role, Other, Funcs}, {PSup_list, Problems }) when is_list(PSup_list)->
 
-  %TODO: move this from here
-  {_,_,NRoles,Problems} = lists:foldl(fun spawn_role/2,{Protocol, ImpRef, Roles,[]}, Roles),
-  NM = data_utils:prot_sup_update(roles, Prot_supervisor, NRoles),
-  Almost = lists:keyreplace(Protocol, 2, Acc#internal.prot_sup, NM),
-  {data_utils:internal_update(prot_sup, Acc, Almost), Problems}.
+  PSup = lists:keyfind(Protocol, 2, PSup_list),
+  ImpRef = PSup#prot_sup.ref,
+
+  LFuncs = lists:foldl(fun({Sig, Func}, Acc) -> [ #func{ sign = Sig, func = Func}| Acc] end,[], Funcs),
+
+  New_spec = data_utils:spec_create(Protocol, Role, Other, ImpRef, LFuncs, undef, undef),
+  MProblems = spawn_role({Id, New_spec}, PSup),
+
+  { PSup_list, Id, [Problems| MProblems] }.
 
 
 
-spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
-  RRole = Role#lrole.role,
-  RRoles = Role#lrole.roles,
-  RImpRef = Role#lrole.imp_ref,
-  RFuncs = Role#lrole.funcs,
+spawn_role({Id, RoleData}, RSup) ->
 
-  New_spec = data_utils:spec_create(Prot, RRole, RRoles, RImpRef, RFuncs, undef, undef),
-  New_role_data = data_utils:role_data_create(New_spec, undef, undef),
+  New_role_data = data_utils:role_data_create(RoleData, undef, undef),
 
   %Taking the resources path from the config file
   Path = case application:get_env(kernel, resources_path) of
@@ -390,17 +378,16 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
              {P} -> P
          end,
 
-  role_sup:start_child(RSup,{ Path , New_role_data}),
+  RolePid = role_sup:start_child(RSup#prot_sup.ref, {Path , New_role_data}),
 
   %Check if the role has started correctly if not skip the insertion and display log
   %% %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
-  RProblems = case role:get_init_state(db_utils:ets_lookup_child_pid({Prot, RRole})) of
-                 {ok} ->  Problems;
-                 Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
-                   [{RRole,Error} | Problems]
-               end,
-
-  {Prot, RSup, Acc, RProblems}.
+  case role:get_init_state(db_utils:ets_lookup_child_pid({RoleData#spec.protocol, RoleData#spec.role})) of
+    {ok} -> db_utils:ets_insert(child, #child_entry{ id = Id, worker = RolePid, data = #child_data{ protocol = RoleData#spec.protocol,
+                                                                                                            role = RoleData#spec.role} }), [];
+    Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
+      [{RoleData#spec.role, Error} ]
+  end.
 
 
 %% generate_list/1
@@ -409,18 +396,17 @@ spawn_role(Role, {Prot, RSup, Acc, Problems}) ->
 -spec generate_list(State :: term()) -> Result when
   Result :: term().
 %% ====================================================================
-generate_list(State) ->
-  lists:foldl(fun(Protocol_sup, Acc1) ->
-    lists:foldl(fun(Role, Acc2) ->
-      [{Protocol_sup#prot_sup.protocol,
-        Role#lrole.role,
-        db_utils:ets_lookup_child_pid({Protocol_sup#prot_sup.protocol, Role#lrole.role})}|Acc2]
-    end, Acc1, Protocol_sup#prot_sup.roles)
-  end, [], State#internal.prot_sup).
+generate_list(Id) ->
+  List_of_Roles = db_utils:ets_lookup_raw(child,{ Id, '_' }),
 
+  lists:foldl(fun(Child_ent, Acc) ->
 
+     [{Child_ent#child_entry.id,
+       Child_ent#child_entry.data#child_data.protocol,
+       Child_ent#child_entry.data#child_data.role,
+       Child_ent#child_entry.worker}
+       | Acc]
 
-
-
+  end, [] ,List_of_Roles).
 
 

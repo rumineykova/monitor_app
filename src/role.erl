@@ -76,6 +76,7 @@ disconnect(Name) ->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
+  lager:start(),
   %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, {Path,NState}, []).
