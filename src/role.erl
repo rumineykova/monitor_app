@@ -76,7 +76,6 @@ disconnect(Name) ->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
-    io:format("STARTLINK ~p~n", [State]),
     %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, {Path,NState}, []).
@@ -96,8 +95,6 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-    io:format("STATE >>> ~p~n",[State]),
-    lager:start(),
     case db_utils:ets_lookup_raw(child,State#role_data.id) of
         [P] ->
             db_utils:ets_insert(child, P#child_entry{worker = self()} ),
@@ -179,7 +176,7 @@ recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= un
 
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, Prot, Cons),
 
-  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_entry.data#child_data.num_lines),
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_data.num_lines),
   NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),

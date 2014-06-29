@@ -17,7 +17,7 @@
 
 simple_recovery_test() ->
     db_utils:install(node(),"db"),
-    db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+    db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
 
     NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
@@ -28,11 +28,15 @@ simple_recovery_test() ->
     Args = data_utils:role_data_create({3,1},Spec, none, none),
 
     role_sup:start_child(Rs,{?PATH, Args}),
-
+    lager:info("GET HERE"),
     Pid = db_utils:ets_lookup_child_pid({3,1}),
     ?assertEqual(true, is_pid(Pid)),
-
+    
+    lager:info("before crash ~p",[self()]),
+    lager:info("GET HERE"),
     role:crash(Pid),
+    lager:info("after crash ~p",[self()]),
+    lager:info("GET HERE"),
 
     timer:sleep(500),
 
@@ -45,7 +49,7 @@ simple_recovery_test() ->
 complex_recovery_test() ->
     db_utils:install(node(),"db"),
     
-    db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+    db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
     
     NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     NRefOrg2 = spawn(test_utils, aux_method_org, [self()]),
@@ -76,8 +80,9 @@ complex_recovery_test() ->
     receive
         ready -> ok
     end,
-    
+    lager:info("before crash ~p",[self()]),
     role:crash(Pid),
+    lager:info("after crash ~p",[self()]),
     
     %% wait to restart befor check pid again
     PidR = db_utils:ets_lookup_child_pid({3, 1}),

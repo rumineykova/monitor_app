@@ -49,8 +49,7 @@ db_usage_test()->
   Rows = gen_list(Insts, RowLines,[]),
   lists:foreach( fun({Num,Row}) -> 
             Record = db_utils:get_row(TblName, Num),
-            ?assertEqual(Row, Record) 
-    end,Rows).
+            ?assertEqual(Row, Record) end,Rows).
 
 
 db_update_test()->
