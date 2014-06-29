@@ -57,11 +57,11 @@ prot_sup_test()->
 
 %% -record(role_data,{spec, conn, exc}).
 role_data_test()->
-  Rdata = data_utils:role_data_create(spec, conn, exc),
-  ?assertEqual(#role_data{ spec = spec, conn = conn, exc = exc}, Rdata),
+  Rdata = data_utils:role_data_create(id, spec, conn, exc),
+  ?assertEqual(#role_data{ id = id, spec = spec, conn = conn, exc = exc}, Rdata),
 
   Rdata1 = data_utils:role_data_update_mult(Rdata, [{spec, sp1},{conn, cn1},{exc, exc1}]),
-  ?assertEqual(#role_data{ spec = sp1, conn = cn1, exc = exc1}, Rdata1).
+  ?assertEqual(#role_data{ id = id, spec = sp1, conn = cn1, exc = exc1}, Rdata1).
 
 
 %%  -record(exc,{state, count}).

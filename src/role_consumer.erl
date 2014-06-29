@@ -41,27 +41,32 @@ stop(Pid) ->
 %% @private
 init({Channel,Q,Master}) ->
   %lager:info("[~p] consumer init",[self()]),
-  rbbt_utils:subscribe(Channel, Q),
-  {ok, {Channel,Q,Master, none} }.
+  #'basic.consume_ok'{consumer_tag = Tag} = rbbt_utils:subscribe(Channel, Q),
+  {ok, {Channel,Q,Master, Tag} }.
 
 
 %% @private
-handle_info(#'basic.consume_ok'{consumer_tag=NCt},  {Chn,Q,Master,_Ct}) ->
-      lager:info("[CONSUMER][~p] binded OK",[self()]),
-      {noreply, {Chn, Q, Master, NCt}};
+handle_info(#'basic.consume_ok'{consumer_tag=Tag},  {_,_,_,Tag} = State) ->
+      lager:info("[CONSUMER][~p] binded OK ~p",[self(), Tag]),
+      {noreply, State};
+
+
 %% @private
 handle_info(#'basic.cancel_ok'{}, State) ->
       lager:info("[CONSUMER] canceled"),
       {stop, normal, State};
-handle_info({#'basic.deliver'{ consumer_tag=NCt, delivery_tag = Tag}, Content},  {Chn,Q,Master,_Ct}) ->
-  lager:info("[CONSUMER] delivered"),
 
-  #amqp_msg{payload = Payload} = Content,
-      Dpld = bert:decode(Payload),
 
-      ok = gen_server:cast(Master,Dpld),
-      amqp_channel:cast(Chn, #'basic.ack'{delivery_tag = Tag}),
-      {noreply, {Chn, Q, Master, NCt}};
+handle_info({#'basic.deliver'{delivery_tag = Tag}, Content}, {Chn, _, Master, _} = State) ->
+    lager:info("[CONSUMER] delivered"),
+
+    #amqp_msg{payload = Payload} = Content,
+    Dpld = bert:decode(Payload),
+
+    ok = gen_server:cast(Master,Dpld),
+    amqp_channel:cast(Chn, #'basic.ack'{delivery_tag = Tag}),
+    {noreply, State};
+
 %% @private
 handle_info({'DOWN', _MRef, process, _Pid, _Info}, State) ->
   lager:info("[CONSUMER] Downd"),

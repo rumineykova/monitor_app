@@ -14,13 +14,12 @@
 -export([prot_sup_create/3, prot_sup_update/3, prot_sup_update_mult/2, prot_sup_add_role/2]).
 -export([internal_create/3, internal_update/3, internal_add_regp/2, internal_update_mult/2]).
 -export([lrole_create/4, lrole_update/3, lrole_update_mult/2, lrole_add_func/2]).
--export([role_data_create/3, role_data_update/3, role_data_update_mult/2]).
+-export([role_data_create/4, role_data_update/3, role_data_update_mult/2]).
 -export([spec_create/7, spec_update/3, spec_update_mult/2]).
 -export([conn_create/6, conn_update/3, conn_update_mult/2]).
 -export([func_create/2, func_update/3]).
 -export([exc_create/3, exc_update/3,exc_update_mult/2]).
 -export([row_create/2, row_update/3]).
--export([save_point_create/3,save_point_update/3]).
 
 
 
@@ -110,6 +109,8 @@ role_data_update_mult(Rdata, ValList) when is_list(ValList) ->
             end, Rdata, ValList).
 
 
+role_data_update(id, Rdata, Val) ->
+  Rdata#role_data{ id = Val };
 role_data_update(state, Rdata, Val) ->
   Rdata#role_data{ state = Val };
 role_data_update(exc, Rdata, Val) ->
@@ -119,8 +120,9 @@ role_data_update(conn, Rdata, Val) ->
 role_data_update(spec, Rdata, Val) ->
   Rdata#role_data{ spec = Val }.
 
-role_data_create(Spec, Conn, Exc) ->
-  #role_data{spec = Spec,
+role_data_create(Id, Spec, Conn, Exc) ->
+  #role_data{ id = Id,
+            spec = Spec,
              conn = Conn,
              exc = Exc
   }.
@@ -268,25 +270,4 @@ row_create(Num, Inst)->
   #row{
         num = Num,
         inst = Inst
-  }.
-
-
-
-%% ====================================================================
-%% Database row for protocols
-%% -record(save_point, {secret_number, count, num_lines}).
-%% ====================================================================
-
-save_point_update(num_lines, Row, Nl) ->
-  Row#save_point{ secret_number = Nl };
-save_point_update(secret_number, Row, Inst) ->
-  Row#save_point{ secret_number = Inst };
-save_point_update(count, Row, Num)->
-  Row#save_point{ count = Num }.
-
-save_point_create(Num, Cnt, Nl)->
-  #save_point{
-    secret_number = Num,
-    count = Cnt,
-    num_lines = Nl
   }.

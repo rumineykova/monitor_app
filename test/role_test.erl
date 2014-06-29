@@ -31,7 +31,7 @@ start_test()->
   Spec = data_utils:spec_create(testp2, test2, [other], NRefOrg, [], undef, undef),
   State = #role_data{ spec = Spec },
 
-  child = db_utils:ets_create(child, [set, named_table, public, {keypos,1}, {write_concurrency, false},{read_concurrency, true}]),
+  child = db_utils:ets_create(child, [set, named_table, public, {keypos,2}, {write_concurrency, false},{read_concurrency, true}]),
 
   {ok, Return} = role:start_link(?PATH,State),
   ?assertEqual(true, is_pid(Return)),
@@ -72,7 +72,7 @@ wait_for_confirmation_test()->
 
 create_conersation_test()->
 
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
 
   NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
     
@@ -101,7 +101,7 @@ create_conersation_test()->
 
 ready_test()->
 
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
 
   NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     
@@ -129,7 +129,7 @@ ready_test()->
 
 
 send_message_test() ->
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
 
   NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     
@@ -283,7 +283,7 @@ aux_method2() ->
 %% ====================================================================
 
 download_test()->
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+  db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
 
   NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 

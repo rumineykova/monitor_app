@@ -12,8 +12,6 @@
 %% API
 -export([aux_method_org/1, mytokens/1]).
 
--compile([{parse_transform, lager_transform}]).
-
 
 aux_method_org(Args) ->
   receive
@@ -31,15 +29,14 @@ aux_method_org(Args) ->
       aux_method_org(Args);
 
     {'$gen_cast',{callback,projection_request,{send, FileName, Host, Port}}} ->
-      lager:warning("FileName ~p",[FileName]),
       {ok, Socket} = gen_tcp:connect(list_to_atom(Host), Port, [binary, {active, false}]),
       PathFile = "../test/test_resources/" ++ FileName,
       true = filelib:is_regular(PathFile),
       {ok, _} = file:sendfile(PathFile, Socket),
       ok = gen_tcp:close(Socket),
       aux_method_org(Args);
-    exit -> lager:info("exit"), ok;
-    M -> lager:info("unkown ~p",[M]), Args ! {error,M},
+    exit -> ok;
+    M ->  Args ! {error,M},
       aux_method_org(Args)
 
   end.

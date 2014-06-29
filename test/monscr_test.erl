@@ -45,22 +45,22 @@ config_test() ->
     ok -> ok;
     {error, eexist} -> ok
   end,
-  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
+  NRefOrg = spawn_link(test_utils, aux_method_org, [self()]),
+
 
   {ok, Mn} = monscr:start_link([]),
 
   {registered, Id} = monscr:register(Mn, NRefOrg),
+  lager:info("ID: ~p",[Id]),
   ?assertEqual(3, Id),
 
 
-
-  Role1 = {{Id, 1}, bid_seaby, client, [sebay], [{response_item,response_item},
-                                                 {lower,lower},
-                                                 {accept, accept},
-                                                 {send_update, send_update}]},
-  Roles= [Role1],
-  Pr = {NRefOrg, Roles },
-
+    Role1 = {bid_sebay, client, [sebay], [{response_item,response_item},
+                                            {lower,lower},
+                                            {accept, accept},
+                                            {send_update, send_update}]},
+    Roles= [Role1],
+    Pr = {Id, Roles },
 
   M = monscr:config_protocol(Mn,Pr),
   ?assertEqual(ok, M),
@@ -70,9 +70,8 @@ config_test() ->
   end,
   lager:info("~p",[R]),
 
-  NRefOrg ! exit,
-
   cleanup(Mn),
+  NRefOrg ! exit,
   ifdelete().
 
 cleanup(Pid) ->

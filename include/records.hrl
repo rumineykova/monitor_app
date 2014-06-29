@@ -9,12 +9,6 @@
 -record(child_data , {protocol, role, secret_number, count, num_lines}).
 
 
-
-
-
-
-
-
 -record(internal,{main_sup,
 		prot_sup = []}
 ).
@@ -40,10 +34,11 @@
 %% Role related structures
 %% ---------------------------------------------------
 
--record(role_data,{spec,
+-record(role_data,{id,
+        spec,
 		conn,
 		exc,
-    state}
+        state}
 ).
 
 -record(spec,{protocol, 
@@ -77,9 +72,4 @@
 -record(row, {num, 
 		inst}
 ).
-
-
--record(save_point, {secret_number,
-                    count,
-                     num_lines}).
 

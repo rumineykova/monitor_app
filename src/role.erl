@@ -76,8 +76,8 @@ disconnect(Name) ->
   Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
-  lager:start(),
-  %lager:warning("[~p] Start_links params ~p",[self(),State]),
+    io:format("STARTLINK ~p~n", [State]),
+    %lager:warning("[~p] Start_links params ~p",[self(),State]),
   NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
   gen_server:start_link(?MODULE, {Path,NState}, []).
 
@@ -96,10 +96,18 @@ start_link(Path, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init({Path, State}) ->
-    case db_utils:ets_lookup_raw(child,{State#role_data.spec#spec.protocol, State#role_data.spec#spec.role}) of
-        [{_Key, _OPid, SavedState}] -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SavedState}),
-                recovery_init(State, SavedState);
-        []  -> db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), data_utils:save_point_create(undef,0,undef)}),
+    io:format("STATE >>> ~p~n",[State]),
+    lager:start(),
+    case db_utils:ets_lookup_raw(child,State#role_data.id) of
+        [P] ->
+            db_utils:ets_insert(child, P#child_entry{worker = self()} ),
+            recovery_init(State, P#child_entry.data);
+        []  ->
+            SData = #child_data{ protocol = State#role_data.spec#spec.protocol, role = State#role_data.spec#spec.role, secret_number = undef, count = 0, num_lines = undef},
+            Ce = #child_entry{ id = State#role_data.id, worker = self(), client = State#role_data.spec#spec.imp_ref, data = SData},
+            io:format("Ce ~p~n",[Ce]),
+            true = db_utils:ets_insert(child, Ce),
+            io:format("~p~n",[self()]),
           zero_init(Path, State);
         M -> lager:info("~p",[M]), error
     end.
@@ -148,7 +156,7 @@ zero_init(Path, State) ->
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs}.
 
-recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= undef->
+recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= undef->
 
   %TODO: make sure table exists
 
@@ -171,8 +179,8 @@ recovery_init(State, SavedState) when SavedState#save_point.secret_number =:= un
 
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, Prot, Cons),
 
-  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_entry.data#child_data.num_lines),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs};
@@ -188,8 +196,8 @@ recovery_init(State, SavedState) ->
                           end,
 
 
-  BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#save_point.secret_number),
-  Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#save_point.secret_number),
+  BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#child_data.secret_number),
+  Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#child_data.secret_number),
   %Declare the queue an bind it to the new exchange
   Q = rbbt_utils:declare_q(Channel, BName),
 
@@ -200,8 +208,8 @@ recovery_init(State, SavedState) ->
 
   Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
-  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#save_point.num_lines),
-  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#save_point.count, SavedState#save_point.secret_number)}]),
+  NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_data.num_lines),
+  NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
   erlang:monitor(process, State#role_data.spec#spec.imp_ref),
   {ok, NArgs}.
@@ -253,9 +261,10 @@ handle_call({init_state}, _From, State)->
 
   %% Similar to wait in  posix the process is alive until someone read that the has been an error
   %% If an error is the response then the process ends itself, if not continues as normal
+  lager:info("init_state ~p",[State#role_data.state]),
   case State#role_data.state of
-    {ok} -> {reply, {ok}, State};
-    {error, R} = K ->   {stop,R,K,State}
+    {ok} -> lager:info("st ok"),{reply, {ok}, State};
+    {error, R} = K -> lager:info("st error"), {stop,R,K,State}
   end;
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -447,18 +456,22 @@ handle_info(Msg, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(_Reason, State) ->
+terminate(Reason, State) ->
+    lager:error("terminating role with reason ~p",[Reason]),
 
+    [P] = db_utils:ets_lookup_raw(child, State#role_data.id),
     %TODO: AM I KILLLING THE CHANNEL BEFORE ROLE_CONSUMER ENDS??????
-    SData = #save_point{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
+    SData = #child_data{ count = State#role_data.exc#exc.count, secret_number = State#role_data.exc#exc.secret_number},
     lager:info("SDATA ~p",[SData]),
-    db_utils:ets_insert(child, {{State#role_data.spec#spec.protocol,State#role_data.spec#spec.role}, self(), SData}),
+
+    NP = P#child_entry{data = SData},
+
+    db_utils:ets_insert(child, NP),
 
     ok = terminate_consumer(State),
 
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
     %% Close the connection
-    
     amqp_channel:close(State#role_data.conn#conn.active_chn),
     amqp_connection:close(State#role_data.conn#conn.connection),
     ok.
@@ -504,6 +517,7 @@ code_change(_OldVsn, State, _Extra) ->
 check_signatures_and_methods(Protocol, Ref, TableName, CallBackList) ->
   case check_signatures(TableName, CallBackList) of
       {ok} ->  lager:info("sig done"),
+            %be carefull dont put anything after check_method it modifies the return!!
                check_method(Protocol, Ref, CallBackList);
     M -> M
   end.
@@ -540,6 +554,7 @@ check_method(Protocol, Ref, Declare_funcs) ->
   %Generate the list of funcions declared by user in the config to check if they are implemented
   Dfuncs = lists:foldl(fun(E,Acc) -> [{E#func.func,2} | Acc] end,[], Declare_funcs),
 
+  lager:info("~p ~p ~n",[Ref,Protocol]),
   case catch gen_server:call(Ref,{methods,Protocol}) of
     {ok, List} -> case check_lists(?MUST_METHODS, List) of
                     {ok} -> check_lists(Dfuncs, List);
@@ -566,8 +581,6 @@ match_lists([ {K,A} | Must_list], List) when is_list(List) ->
     {_, Arity} when Arity =/= A -> throw(arity_missmatch);
     _ -> throw(method_not_found)
 end.
-
-
 
 
 %% check_for_termination/2

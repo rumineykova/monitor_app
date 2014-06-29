@@ -166,3 +166,5 @@ subscribe(Chn, Q) ->
 
 unsubscribe(Chn,Ct) ->
   amqp_channel:call(Chn,#'basic.cancel'{consumer_tag=Ct}).
+
+

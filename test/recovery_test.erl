@@ -16,76 +16,77 @@
 -define(PATH, "../test/test_resources/").
 
 simple_recovery_test() ->
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+    db_utils:install(node(),"db"),
+    db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
-  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
+    NRefOrg = spawn(test_utils, aux_method_org, [self()]),
 
-  {ok,Rs} = role_sup:start_link(),
-  ?assertEqual(true,is_pid(Rs)),
+    {ok,Rs} = role_sup:start_link(),
+    ?assertEqual(true,is_pid(Rs)),
 
-  Spec = data_utils:spec_create(testp4, test4, [], NRefOrg, [], undef, undef),
-  Args = data_utils:role_data_create(Spec, none, none),
+    Spec = data_utils:spec_create(testp4, test4, [], NRefOrg, [], undef, undef),
+    Args = data_utils:role_data_create({3,1},Spec, none, none),
 
-  role_sup:start_child(Rs,{?PATH, Args}),
+    role_sup:start_child(Rs,{?PATH, Args}),
 
-  Pid = db_utils:ets_lookup_child_pid({testp4, test4}),
-  ?assertEqual(true, is_pid(Pid)),
+    Pid = db_utils:ets_lookup_child_pid({3,1}),
+    ?assertEqual(true, is_pid(Pid)),
 
-  role:crash(Pid),
+    role:crash(Pid),
 
-  timer:sleep(500),
+    timer:sleep(500),
 
-  PidR = db_utils:ets_lookup_child_pid({testp4, test4}),
-  ?assertEqual(true, is_pid(PidR)),
+    PidR = db_utils:ets_lookup_child_pid({3, 1}),
+    ?assertEqual(true, is_pid(PidR)),
 
-  cleanup(Rs).
+    cleanup(Rs).
 
 
 complex_recovery_test() ->
-  db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+    db_utils:install(node(),"db"),
+    
+    db_utils:ets_create(child,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
+    
+    NRefOrg = spawn(test_utils, aux_method_org, [self()]),
+    NRefOrg2 = spawn(test_utils, aux_method_org, [self()]),
+    
+    {ok,Rs} = role_sup:start_link(),
+    ?assertEqual(true,is_pid(Rs)),
+    
+    Spec = data_utils:spec_create(bid_cl, sb, [cl], NRefOrg, [], undef, undef),
+    Args = data_utils:role_data_create({3,1}, Spec, none, none),
+    
+    Spec2 = data_utils:spec_create(bid_cl, cl, [sb], NRefOrg2, [], undef, undef),
+    Args2 = data_utils:role_data_create({3,2}, Spec2, none, none),
+    
+    role_sup:start_child(Rs,{?PATH, Args}),
+    role_sup:start_child(Rs,{?PATH, Args2}),
+    
+    Pid = db_utils:ets_lookup_child_pid({3, 1}),
+    ?assertEqual(true, is_pid(Pid)),
+    
+    ok = role:create(Pid,bid_cl),
+    
+    timer:sleep(1000),
+    
+    %One ready per NRefOrg
+    receive
+        ready -> ok
+    end,
+    receive
+        ready -> ok
+    end,
+    
+    role:crash(Pid),
+    
+    %% wait to restart befor check pid again
+    PidR = db_utils:ets_lookup_child_pid({3, 1}),
+    ?assertEqual(true, is_pid(PidR)),
 
-  NRefOrg = spawn(test_utils, aux_method_org, [self()]),
-  NRefOrg2 = spawn(test_utils, aux_method_org, [self()]),
-
-  db_utils:install(node(), "db/"),
-
-  {ok,Rs} = role_sup:start_link(),
-  ?assertEqual(true,is_pid(Rs)),
-
-  Spec = data_utils:spec_create(bid_cl, sb, [cl], NRefOrg, [], undef, undef),
-  Args = data_utils:role_data_create(Spec, none, none),
-
-  Spec2 = data_utils:spec_create(bid_cl, cl, [sb], NRefOrg2, [], undef, undef),
-  Args2 = data_utils:role_data_create(Spec2, none, none),
-
-  role_sup:start_child(Rs,{?PATH, Args}),
-  role_sup:start_child(Rs,{?PATH, Args2}),
-
-  Pid = db_utils:ets_lookup_child_pid({bid_cl, sb}),
-  ?assertEqual(true, is_pid(Pid)),
-
-  ok = role:create(Pid,bid_cl),
-
-  timer:sleep(1000),
-
-  %One ready per NRefOrg
-  receive
-    ready -> ok
-  end,
-  receive
-    ready -> ok
-  end,
-
-  role:crash(Pid),
-
-  %% wait to restart befor check pid again
-  PidR = db_utils:ets_lookup_child_pid({bid_cl, sb}),
-  ?assertEqual(true, is_pid(PidR)),
-
-  timer:sleep(2000),
-  cleanup(Rs),
-  NRefOrg ! exit,
-  NRefOrg2 ! exit.
+    timer:sleep(2000),
+    cleanup(Rs),
+    NRefOrg ! exit,
+    NRefOrg2 ! exit.
 
 
 cleanup(Pid) ->

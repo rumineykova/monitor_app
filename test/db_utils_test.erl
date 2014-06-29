@@ -43,13 +43,14 @@ db_usage_test()->
     {continue,15},
     {to,nobid,sebay},
     {continue,15}],
+
   RowLines = lists:seq(0, 100),
 
   Rows = gen_list(Insts, RowLines,[]),
-  lists:foreach( fun({Num,Row}) ->
-                            Record = db_utils:get_row(TblName, Num),
-                            ?assertEqual(Row, Record) end,Rows).
-
+  lists:foreach( fun({Num,Row}) -> 
+            Record = db_utils:get_row(TblName, Num),
+            ?assertEqual(Row, Record) 
+    end,Rows).
 
 
 db_update_test()->

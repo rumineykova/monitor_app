@@ -15,8 +15,8 @@
 
 %% API
 -export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
--export([ets_create/2, ets_lookup/2,ets_lookup_raw/2, ets_insert/2, ets_delete/1,ets_lookup_child_pid/1]).
-
+-export([ets_create/2, ets_lookup/2,ets_lookup_raw/2, ets_insert/2, ets_delete/1,ets_lookup_child_pid/1, ets_lookup_client_pid/1]).
+-export([ets_key_pattern_match/1]).
 %Might be removed ->
 -export([print_db/2]).
 
@@ -124,18 +124,30 @@ ets_create(Name, Options) ->
     end.
 
 
+
+
+ets_key_pattern_match(Key) ->
+    P = #child_entry{id = {Key, '_'}, data = '_', worker ='_', client = '_'},
+    lager:info("~p",[P]),
+    ets:match_object(child, P).
+
 ets_lookup(Mer, CName)->
     %lager:info("Trying to lookup ~p",[Mer]),
     [{_,Line}] = ets:lookup(Mer,CName),
   Line.
 
-ets_lookup_child_pid(Key) ->
-  [{_,Pid,_}] = ets:lookup(child, Key),
-  Pid.
 
-ets_lookup_child_new(Key) ->
-  [#child_entry{ worker = Pid}] = ets:lookup(child,Key),
-  Pid.
+
+ets_lookup_client_pid(Key) ->
+    io:format("~p~n",[Key]),
+    [P] = ets:lookup(child,Key),
+    P#child_entry.client.
+
+
+ets_lookup_child_pid(Key) ->
+    io:format("~p~n",[Key]),
+    [P] = ets:lookup(child,Key),
+    P#child_entry.worker.
 
 ets_lookup_raw(Mer, Key)->
   ets:lookup(Mer,Key).
