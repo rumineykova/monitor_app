@@ -32,17 +32,6 @@ conn_test()->
   ?assertEqual(#conn{connection = cn1, active_chn = chn1, con_id = id1, active_q = q1, active_exc = exc1, active_cns = cns1},Chn1).
 
 
-%% -record(lrole,{role, roles, ref, imp_ref, funcs}).
-lrole_test()->
-  Lr = data_utils:lrole_create(rl,rls,impref, [funcs]),
-  ?assertEqual(#lrole{ role = rl, roles = rls, imp_ref = impref, funcs = [funcs]}, Lr),
-
-  Lr2 = data_utils:lrole_add_func(Lr,fc1),
-  ?assertEqual(#lrole{ role = rl, roles = rls,  imp_ref = impref, funcs = [fc1, funcs]}, Lr2),
-
-  Lr1 = data_utils:lrole_update_mult(Lr, [{role, rl1},{roles, rls1},{imp_ref, mprf1},{funcs, [fc1]}]),
-  ?assertEqual(#lrole{role = rl1, roles = rls1, imp_ref = mprf1, funcs = [fc1]}, Lr1).
-
 %% -record(prot_sup,{protocol, ref, roles}).
 prot_sup_test()->
   Psup = data_utils:prot_sup_create(prot, ref, [rl]),

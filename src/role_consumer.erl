@@ -92,9 +92,6 @@ handle_cast(_Message, State) ->
 
 %% Closes the channel this gen_server instance started
 %% @private
-terminate(Reason,{_Chn,_Q,_Master,none})->
-  lager:info("[CONSUMER][~p] terminating with reason ~p",[self(),Reason]),
-  ok;
 terminate(Reason,{Chn,_Q,_Master,Ct})->
   lager:info("[CONSUMER][~p] terminating not none with reason ~p",[self(),Reason]),
   lager:error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p",[Ct]),

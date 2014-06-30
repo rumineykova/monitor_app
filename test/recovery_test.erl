@@ -28,15 +28,10 @@ simple_recovery_test() ->
     Args = data_utils:role_data_create({3,1},Spec, none, none),
 
     role_sup:start_child(Rs,{?PATH, Args}),
-    lager:info("GET HERE"),
     Pid = db_utils:ets_lookup_child_pid({3,1}),
     ?assertEqual(true, is_pid(Pid)),
-    
-    lager:info("before crash ~p",[self()]),
-    lager:info("GET HERE"),
+
     role:crash(Pid),
-    lager:info("after crash ~p",[self()]),
-    lager:info("GET HERE"),
 
     timer:sleep(500),
 
@@ -48,31 +43,31 @@ simple_recovery_test() ->
 
 complex_recovery_test() ->
     db_utils:install(node(),"db"),
-    
+
     db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
-    
+
     NRefOrg = spawn(test_utils, aux_method_org, [self()]),
     NRefOrg2 = spawn(test_utils, aux_method_org, [self()]),
-    
+
     {ok,Rs} = role_sup:start_link(),
     ?assertEqual(true,is_pid(Rs)),
-    
+
     Spec = data_utils:spec_create(bid_cl, sb, [cl], NRefOrg, [], undef, undef),
     Args = data_utils:role_data_create({3,1}, Spec, none, none),
-    
+
     Spec2 = data_utils:spec_create(bid_cl, cl, [sb], NRefOrg2, [], undef, undef),
     Args2 = data_utils:role_data_create({3,2}, Spec2, none, none),
-    
+
     role_sup:start_child(Rs,{?PATH, Args}),
     role_sup:start_child(Rs,{?PATH, Args2}),
-    
+
     Pid = db_utils:ets_lookup_child_pid({3, 1}),
     ?assertEqual(true, is_pid(Pid)),
-    
+
     ok = role:create(Pid,bid_cl),
-    
+
     timer:sleep(1000),
-    
+
     %One ready per NRefOrg
     receive
         ready -> ok
@@ -83,7 +78,7 @@ complex_recovery_test() ->
     lager:info("before crash ~p",[self()]),
     role:crash(Pid),
     lager:info("after crash ~p",[self()]),
-    
+
     %% wait to restart befor check pid again
     PidR = db_utils:ets_lookup_child_pid({3, 1}),
     ?assertEqual(true, is_pid(PidR)),
@@ -95,14 +90,16 @@ complex_recovery_test() ->
 
 
 cleanup(Pid) ->
-  %This will kill supervisor and childs
-  unlink(Pid),
-  Ref = monitor(process, Pid),
-  exit(Pid, shutdown),
-  receive
-    {'DOWN', Ref, process, Pid, _Reason} ->
-      ok
-  after 1000 ->
-    error(exit_timeout)
-  end,
-  ets:delete(child).
+    %This will kill supervisor and childs
+    unlink(Pid),
+    Ref = monitor(process, Pid),
+    exit(Pid, shutdown),
+    receive
+        {'DOWN', Ref, process, Pid, _Reason} ->
+            ok
+    after 1000 ->
+            error(exit_timeout)
+    end,
+    ets:delete(child).
+
+
