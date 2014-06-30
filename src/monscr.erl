@@ -316,7 +316,8 @@ config_prot_roles(_, _) ->
     Result :: {list(),term()}.
 %% ====================================================================
 start_roles(Id, Role_list, State) ->
-    lists:foldl(fun  traverse_supervisors/2, {State#internal.prot_sup, Id, 1, []}, Role_list).
+    {_ , _ , _ , Problems} = lists:foldl(fun  traverse_supervisors/2, {State#internal.prot_sup, Id, 1, []}, Role_list),
+    Problems.
 
 
 traverse_supervisors({Protocol, Role, Other, Funcs}, {PSup_list, Id,  K , Problems }) when is_list(PSup_list)->
@@ -329,7 +330,7 @@ traverse_supervisors({Protocol, Role, Other, Funcs}, {PSup_list, Id,  K , Proble
     New_spec = data_utils:spec_create(Protocol, Role, Other, ImpRef, LFuncs, undef, undef),
     MProblems = spawn_role( {Id, K},  New_spec, PSup),
 
-    { PSup_list, Id, K+1, [Problems| MProblems] }.
+    { PSup_list, Id, K+1, Problems ++  MProblems }.
 
 
 

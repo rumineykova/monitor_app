@@ -102,9 +102,7 @@ init({Path, State}) ->
         []  ->
             SData = #child_data{ protocol = State#role_data.spec#spec.protocol, role = State#role_data.spec#spec.role, secret_number = undef, count = 0, num_lines = undef},
             Ce = #child_entry{ id = State#role_data.id, worker = self(), client = State#role_data.spec#spec.imp_ref, data = SData},
-            io:format("Ce ~p~n",[Ce]),
             true = db_utils:ets_insert(child, Ce),
-            io:format("~p~n",[self()]),
             zero_init(Path, State);
         M -> lager:info("~p",[M]), error
     end.
