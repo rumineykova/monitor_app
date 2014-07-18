@@ -5,6 +5,7 @@
 .settings
 .DS_STORE
 db
+doc
 log
 deps
 *.iml

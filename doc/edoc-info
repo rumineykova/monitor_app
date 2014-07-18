@@ -1,5 +1,0 @@
-%% encoding: UTF-8
-{application,monscr}.
-{packages,[]}.
-{modules,[bert,data_utils,db_utils,gen_monrcp,monscr,monscr_app,monscr_sup,
-          rbbt_utils,role,role_consumer,role_sup,scribble,sup_role_sup]}.
