@@ -28,7 +28,7 @@ register_test()->
     {ok, Mn} = monscr:start_link([]),
     ?assertEqual(true, is_pid(Mn) ),
     {registered, Id} = monscr:register(Mn, self()),
-    ?assertEqual(true, is_integer(Id)),
+    ?assertEqual(true, is_reference(Id)),
 
     cleanup(Mn),
     ifdelete().
@@ -47,7 +47,7 @@ config_test() ->
     {ok, Mn} = monscr:start_link([]),
 
     {registered, Id} = monscr:register(Mn, NRefOrg),
-    ?assertEqual(true, is_integer(Id)),
+    ?assertEqual(true, is_reference(Id)),
 
 
     Role1 = {bid_sebay, client, [sebay], [{response_item,response_item},

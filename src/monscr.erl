@@ -246,8 +246,7 @@ code_change(_OldVsn, State, _Extra) ->
     Reply :: {ok, conf_done} | {error, not_pid}.
 %% ====================================================================
 register_imp(Pid) when is_pid(Pid)->
-    random:seed(erlang:now()),
-    Id = random:uniform(100000),
+    Id = make_ref(),
     true = db_utils:ets_insert(child, #child_entry{ id = Id, client = Pid}),
     {registered, Id};
 register_imp(State) ->
@@ -316,11 +315,11 @@ config_prot_roles(_, _) ->
     Result :: {list(),term()}.
 %% ====================================================================
 start_roles(Id, Role_list, State) ->
-    {_ , _ , _ , Problems} = lists:foldl(fun  traverse_supervisors/2, {State#internal.prot_sup, Id, 1, []}, Role_list),
+    {_ , _ , Problems} = lists:foldl(fun  traverse_supervisors/2, {State#internal.prot_sup, Id, []}, Role_list),
     Problems.
 
 
-traverse_supervisors({Protocol, Role, Other, Funcs}, {PSup_list, Id,  K , Problems }) when is_list(PSup_list)->
+traverse_supervisors({Protocol, Role, Other, Funcs}, {PSup_list, Id, Problems }) when is_list(PSup_list)->
     PSup = lists:keyfind(Protocol, 2, PSup_list),
 
     ImpRef = db_utils:ets_lookup_client_pid(Id),
@@ -328,9 +327,9 @@ traverse_supervisors({Protocol, Role, Other, Funcs}, {PSup_list, Id,  K , Proble
     LFuncs = lists:foldl(fun({Sig, Func}, Acc) -> [ #func{ sign = Sig, func = Func}| Acc] end,[], Funcs),
 
     New_spec = data_utils:spec_create(Protocol, Role, Other, ImpRef, LFuncs, undef, undef),
-    MProblems = spawn_role( {Id, K},  New_spec, PSup),
+    MProblems = spawn_role( {Id, make_ref()},  New_spec, PSup),
 
-    { PSup_list, Id, K+1, Problems ++  MProblems }.
+    { PSup_list, Id, Problems ++  MProblems }.
 
 
 
