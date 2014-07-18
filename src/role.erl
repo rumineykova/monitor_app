@@ -117,18 +117,21 @@ zero_init(Path, State) ->
 
     %This method will load and in case of not having the file requestes it from the source
     Scr = manage_projection_file(Path, State),
+    lager:info("[ZERo] DONE"),
 
     {ok, NumLines} = case db_utils:get_table(Role) of
-        {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
-        {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
-        {error, _Reason} -> erlang:exit(self())
+        {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
+        {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
+        P -> lager:info("~p",[P]),P
     end,
+    lager:info("[ZERo] DONE"),
 
     St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
         State#role_data.spec#spec.imp_ref,
         Role,
         State#role_data.spec#spec.funcs),
 
+    lager:info("[ZERo] DONE"),
 
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
@@ -140,16 +143,21 @@ zero_init(Path, State) ->
     Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
         Channel,
         Role),
+    lager:info("[ZERo] DONE"),
 
     Cons = role_consumer:start_link({Channel,Q,self()}),
 
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
+    lager:info("[ZERo] DONE"),
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
     NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(undef, 0, undef)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+    lager:info("[ZERo] DONE"),
     {ok, NArgs}.
+
+
 
 recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= undef->
 
@@ -427,9 +435,15 @@ handle_cast(_Request, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) when Pid =:= State#role_data.spec#spec.imp_ref ->
+    lager:info("DOWN STOPING FOR noconnection OK"),
+    {stop, normal,State};
+handle_info({'DOWN',_MonRef,process,Pid,normal}, State) when Pid =:= State#role_data.spec#spec.imp_ref ->
+    lager:info("DOwn STOPING FOR normal halt"),
+    {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
-    lager:info("Process ~p down reason: ~p",[Pid, Reason]),
-    {norply, State};
+    lager:info("Process ~p down reason: ~p ~p",[Pid, State#role_data.spec#spec.imp_ref, Reason]),
+    {noreply, State};
 handle_info({'EXIT', Pid, Reason} , State) ->
     lager:info("Exit in Role received ~p ~p ",[Pid, Reason]),
     {noreply, State};
@@ -453,6 +467,21 @@ handle_info(Msg, State) ->
     | {shutdown, term()}
     | term().
 %% ====================================================================
+terminate(normal, State) ->
+    lager:error("terminating role with reason NORM!!!!"),
+
+    db_utils:ets_remove_child_entry(State#role_data.id),
+
+    ok = terminate_consumer(State),
+
+    List = ets:foldl(fun(E, Acc)-> [E | Acc] end, [], child),
+    lager:info("CLIENT ~n~n ~p ~n~n",[List]),
+
+    rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
+    %% Close the connection
+    amqp_channel:close(State#role_data.conn#conn.active_chn),
+    amqp_connection:close(State#role_data.conn#conn.connection),
+    ok;
 terminate(Reason, State) ->
     lager:error("terminating role with reason ~p",[Reason]),
 
@@ -480,7 +509,7 @@ terminate_consumer(State)->
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
     unlink(Pid),
     Ref = monitor(process, Pid),
-    exit(Pid, shutdown),
+    role_consumer:stop(Pid),
     receive
         {'DOWN', Ref, process, Pid, _Reason} ->
             ok
@@ -589,8 +618,7 @@ match_lists([ {K,A} | Must_list], List) when is_list(List) ->
 check_for_termination(State,CurLine)->
     case State#role_data.spec#spec.lines of
         N when N =:= CurLine ->
-            bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol}),
-            true;
+            bcast_msg_to_roles(self,State,{terminated,State#role_data.spec#spec.protocol});
         _ -> false
     end.
 
@@ -694,7 +722,7 @@ bcast_msg_to_roles(others,State,Msg)->
         State#role_data.conn#conn.active_chn,
         Msg);
 bcast_msg_to_roles(self,State,Msg) ->
-    bcast_msg_to_roles(State#role_data.spec#spec.role,
+    bcast_msg_to_roles([State#role_data.spec#spec.role],
         State#role_data.conn#conn.active_exc,
         State#role_data.conn#conn.active_chn,
         Msg).
@@ -703,17 +731,14 @@ bcast_msg_to_roles(self,State,Msg) ->
 %% bcast_msg_to_roles/4
 %% ====================================================================
 %% @doc Recursive function to send messages to all roles in the list
--spec bcast_msg_to_roles(List :: list(), Content :: term(), Ex :: term(), Chn :: term()) -> Result when
-    Result :: true.
+%-spec bcast_msg_to_roles(List :: list(), Content :: term(), Ex :: term(), Chn :: term()) -> Result when
+%    Result :: true.
 %% ====================================================================
-
 bcast_msg_to_roles([],_Content,_Ex,_Chn)->
-    %lager:info("[~p] BCast done",[self()]),
     true;
 bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
     rbbt_utils:publish_msg(Chn,Exc,Role,Content),
     bcast_msg_to_roles(Roles,Content,Exc,Chn).
-
 
 
 %%
@@ -735,7 +760,7 @@ match_directive(Record,Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl) ->
         {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl);
         {choice,_name,Lines} -> Npath = find_path(Lines,Pc,Flag,MaxN,Tbl), case_continue(Pc,Npath,MaxN,Tbl);
         {continue,NNum} -> case_continue(Pc,NNum,MaxN,Tbl);
-        _ -> lager:error("[~p] MISSMATCH Revise your code!!!!",[self()]),{error}
+        T -> lager:error("[~p] MISSMATCH Revise your code!!!! ~p, ~p, ~p, ~p",[self(),T, Record, Sig, Ordest]),{error}
     end.
 
 

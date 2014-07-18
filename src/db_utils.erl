@@ -16,7 +16,7 @@
 %% API
 -export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
 -export([ets_create/2, ets_lookup/2,ets_lookup_raw/2, ets_insert/2, ets_delete/1,ets_lookup_child_pid/1, ets_lookup_client_pid/1]).
--export([ets_key_pattern_match/1]).
+-export([ets_key_pattern_match/1,ets_remove_child_entry/1]).
 %Might be removed ->
 -export([print_db/2]).
 
@@ -125,10 +125,20 @@ ets_create(Name, Options) ->
 
 
 
+%ets_remove_child_entry(Pid) when is_pid(Pid)->
+%    P = #child_entry{id = '_', data = '_', worker ='_', client = Pid},
+%    %lager:info("~p",[P]),
+%    Ent = ets:match_object(child, P),
+%    lager:info("~p",[Ent]),
+%    lists:foreach(fun(E) ->  ets:delete(child, E#child_entry.id) end,Ent);
+%    %true = ets:delete(child,Ent#child_entry.id);
+ets_remove_child_entry(Key) when is_tuple(Key)->
+    true = ets:delete(child, Key).
+
 
 ets_key_pattern_match(Key) ->
     P = #child_entry{id = {Key, '_'}, data = '_', worker ='_', client = '_'},
-    lager:info("~p",[P]),
+    %lager:info("~p",[P]),
     ets:match_object(child, P).
 
 ets_lookup(Mer, CName)->
@@ -146,7 +156,7 @@ ets_lookup_client_pid(Key) ->
 
 ets_lookup_child_pid(Key) ->
     List = ets:foldl(fun(E, Acc)-> [E | Acc] end, [], child),
-    lager:info("CHILD ~p~n~n",[List]),
+    %lager:info("CHILD ~p~n~n",[List]),
     [P] = ets:lookup(child,Key),
     P#child_entry.worker.
 

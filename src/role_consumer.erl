@@ -31,7 +31,7 @@ start_link(Args)->
 %% RpcServer = pid()
 %% @doc Stops an exisiting RPC server.
 stop(Pid) ->
-  gen_server:call(Pid, stop, infinity).
+  gen_server:call(Pid, stop).
 
 %% =========================================================================
 %% gen_server callbacks
@@ -76,9 +76,10 @@ handle_info(Mse, State) ->
 {noreply, State}.
 
 %% @private
-handle_call(stop, _From, State) ->
+handle_call(stop, _From,  {Chn,_,_,Ct}= State) ->
   lager:info("[CONSUMER] STOP called"),
-  {stop, normal, ok, State}.
+  rbbt_utils:unsubscribe(Chn, Ct),
+  {reply, ok, State}.
 
 %%--------------------------------------------------------------------------
 %% Rest of the gen_server callbacks
@@ -93,12 +94,7 @@ handle_cast(_Message, State) ->
 %% Closes the channel this gen_server instance started
 %% @private
 terminate(Reason,{Chn,_Q,_Master,Ct})->
-  lager:info("[CONSUMER][~p] terminating not none with reason ~p",[self(),Reason]),
-  lager:error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ~p",[Ct]),
-  rbbt_utils:unsubscribe(Chn, Ct),
-  receive
-    #'basic.cancel_ok'{} -> lager:info("[CONSUMER] cancel ok"), ok
-  end.
+  ok.
 
 
 %% @private

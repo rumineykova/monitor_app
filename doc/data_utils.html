@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module data_utils</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module data_utils</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>.
+<p>Copyright © (C) 2014, &lt;COMPANY&gt;</p>
+
+<p><b>Authors:</b> fo713.</p>
+
+<h2><a name="description">Description</a></h2>
+  
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#conn_create-6">conn_create/6</a></td><td></td></tr>
+<tr><td valign="top"><a href="#conn_update-3">conn_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#conn_update_mult-2">conn_update_mult/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#exc_create-3">exc_create/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#exc_update-3">exc_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#exc_update_mult-2">exc_update_mult/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#func_create-2">func_create/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#func_update-3">func_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#internal_add_regp-2">internal_add_regp/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#internal_create-3">internal_create/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#internal_update-3">internal_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#internal_update_mult-2">internal_update_mult/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#prot_sup_add_role-2">prot_sup_add_role/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#prot_sup_create-3">prot_sup_create/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#prot_sup_update-3">prot_sup_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#prot_sup_update_mult-2">prot_sup_update_mult/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#role_data_create-4">role_data_create/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#role_data_update-3">role_data_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#role_data_update_mult-2">role_data_update_mult/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#row_create-2">row_create/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#row_update-3">row_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#spec_create-7">spec_create/7</a></td><td></td></tr>
+<tr><td valign="top"><a href="#spec_update-3">spec_update/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#spec_update_mult-2">spec_update_mult/2</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="conn_create-6">conn_create/6</a></h3>
+<div class="spec">
+<p><tt>conn_create(Con, ActChn, ConId, ActQ, ActExc, ActCns) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="conn_update-3">conn_update/3</a></h3>
+<div class="spec">
+<p><tt>conn_update(X1, Conn, Val) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="conn_update_mult-2">conn_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>conn_update_mult(Conn, ValList) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="exc_create-3">exc_create/3</a></h3>
+<div class="spec">
+<p><tt>exc_create(State, Count, SN) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="exc_update-3">exc_update/3</a></h3>
+<div class="spec">
+<p><tt>exc_update(X1, Conn, Sn) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="exc_update_mult-2">exc_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>exc_update_mult(Exc, ValList) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="func_create-2">func_create/2</a></h3>
+<div class="spec">
+<p><tt>func_create(Msg, Func) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="func_update-3">func_update/3</a></h3>
+<div class="spec">
+<p><tt>func_update(X1, Fnc, Val) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="internal_add_regp-2">internal_add_regp/2</a></h3>
+<div class="spec">
+<p><tt>internal_add_regp(Internal, Process) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="internal_create-3">internal_create/3</a></h3>
+<div class="spec">
+<p><tt>internal_create(Main_sup, Regp, Prot_sup) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="internal_update-3">internal_update/3</a></h3>
+<div class="spec">
+<p><tt>internal_update(X1, Internal, Val) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="internal_update_mult-2">internal_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>internal_update_mult(Internal, ValList) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="prot_sup_add_role-2">prot_sup_add_role/2</a></h3>
+<div class="spec">
+<p><tt>prot_sup_add_role(Psup, Role) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="prot_sup_create-3">prot_sup_create/3</a></h3>
+<div class="spec">
+<p><tt>prot_sup_create(Prot, Ref, Roles) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="prot_sup_update-3">prot_sup_update/3</a></h3>
+<div class="spec">
+<p><tt>prot_sup_update(X1, Psup, Role) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="prot_sup_update_mult-2">prot_sup_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>prot_sup_update_mult(Psup, ValList) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="role_data_create-4">role_data_create/4</a></h3>
+<div class="spec">
+<p><tt>role_data_create(Id, Spec, Conn, Exc) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="role_data_update-3">role_data_update/3</a></h3>
+<div class="spec">
+<p><tt>role_data_update(X1, Rdata, Val) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="role_data_update_mult-2">role_data_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>role_data_update_mult(Rdata, ValList) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="row_create-2">row_create/2</a></h3>
+<div class="spec">
+<p><tt>row_create(Num, Inst) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="row_update-3">row_update/3</a></h3>
+<div class="spec">
+<p><tt>row_update(X1, Row, Inst) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="spec_create-7">spec_create/7</a></h3>
+<div class="spec">
+<p><tt>spec_create(Prot, Role, Roles, ImpRef, Funcs, Proj, Lines) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="spec_update-3">spec_update/3</a></h3>
+<div class="spec">
+<p><tt>spec_update(X1, Spec, Val) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="spec_update_mult-2">spec_update_mult/2</a></h3>
+<div class="spec">
+<p><tt>spec_update_mult(Spec, ValList) -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Jul 18 2014, 10:43:37.</i></p>
+</body>
+</html>

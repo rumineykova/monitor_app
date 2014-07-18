@@ -138,6 +138,8 @@ init(_State) ->
 %% ====================================================================
 handle_call({register,Pid},_From,State) ->
     Reply = register_imp(Pid),
+    monitor(process,Pid),
+    lager:info("[MONSCR] [REGISTER] reply: ~p",[Reply]),
     {reply,Reply,State};
 handle_call({request_id, Id}, _From, State) ->
     {reply, db_utils:ets_lookup_child_pid(Id), State};
@@ -158,8 +160,9 @@ handle_call(_Request,_From,State)->
 %% ====================================================================
 handle_cast({config,{Id,_ } = Config } , State) ->
     %% Colling the actual implementation of the configuration
+    lager:info("configureing protocols"),
     {ok, Reply} = config_protocol_imp(Config, State),
-
+    lager:info("protocols configured with reply ~p",[Reply]),
     %% performing a callback to config_done in the client
     Pid = db_utils:ets_lookup_client_pid(Id),
     gen_monrcp:send(Pid, {callback, config_done, Reply}),
@@ -185,10 +188,6 @@ handle_cast(Msg, State) ->
 %% ====================================================================
 handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
     lager:info("Process ~p down",[Pid]),
-    role:stop(self()),
-    {noreply, State};
-handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
-    lager:info("Process ~p down reason: ~p",[Pid, Reason]),
     role:stop(self()),
     {noreply, State};
 handle_info({'EXIT', Pid, Reason} , State) when Pid =:= State#internal.main_sup ->
