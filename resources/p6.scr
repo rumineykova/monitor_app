@@ -1,0 +1,10 @@
+local protocol flatpingpong at p6( 
+	role p1, role p2,
+	role p3, role p4,
+	role p5, role p6
+	)
+{
+	ping(string) from p5;
+
+	pong(string) to p5;
+}

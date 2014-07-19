@@ -150,7 +150,7 @@ ets_lookup(Mer, CName)->
 
 ets_lookup_client_pid(Key) ->
     List = ets:foldl(fun(E, Acc)-> [E | Acc] end, [], child),
-    lager:info("CLIENT ~p~n~n",[List]),
+    %lager:info("CLIENT ~p~n~n",[List]),
     [P] = ets:lookup(child,Key),
     P#child_entry.client.
 

@@ -738,7 +738,7 @@ bcast_msg_to_roles([],_Content,_Ex,_Chn)->
     true;
 bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
     rbbt_utils:publish_msg(Chn,Exc,Role,Content),
-    bcast_msg_to_roles(Roles,Content,Exc,Chn).
+    bcast_msg_to_roles(Roles,Exc,Chn,Content).
 
 
 %%

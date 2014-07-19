@@ -1,0 +1,18 @@
+global protocol flatpingpong( 
+	role p1, role p2
+	role p3, role p4
+	role p5, role p6
+	)
+{
+	ping(string) from p1 to p2;
+	ping(string) from p2 to p3;
+	ping(string) from p3 to p4;
+	ping(string) from p4 to p5;
+	ping(string) from p5 to p6;
+
+	pong(string) from p6 to p5;
+	pong(string) from p5 to p4;
+	pong(string) from p4 to p3;
+	pong(string) from p3 to p2;
+	pong(string) from p2 to p1;
+}
