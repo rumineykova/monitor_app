@@ -1,0 +1,11 @@
+local protocol flatpingpong at p1( 
+	role s1, role s2
+	)
+{
+    rec poing{
+        ping(string) to s2;
+	
+	    pong(string) from s2;
+        continue poing;
+    }
+}    
