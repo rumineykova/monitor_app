@@ -1,0 +1,9 @@
+local protocol looppingpong_p2 at x2(role x1, role x2) {
+	log_process(pid) from x1;
+	rec cont
+	{
+		ping(string) from x1;
+		pong(string) to x1;
+		continue cont;
+	}
+}

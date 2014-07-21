@@ -1,0 +1,10 @@
+global protocol looppingpong(role p1, role p2)
+{
+	log_process(pig) from p1 to p2;
+
+	rec cont{
+		ping(string) from p1 to p2;
+		pong(string) from p2 to p1;
+		continue cont;
+	}
+}

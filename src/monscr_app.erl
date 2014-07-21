@@ -13,7 +13,7 @@
 
 start(_StartType, _StartArgs) ->
   db_utils:install(node(),"db"),
-
+  crypto:start(),
   %Start the monscr suppervisor  == Starts the application
   monscr_sup:start_link().
 

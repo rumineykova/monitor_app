@@ -241,7 +241,8 @@ recovery_init(State, SavedState) ->
 %% ====================================================================
 handle_call({create,_Protocol},_From,State)->
     % Generate aleatori number for private conversations
-    Rand = [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)],
+	Rand =[integer_to_list(crypto:rand_uniform(1, 10)) || _ <- lists:seq(1, 6)],
+    % [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)],
 
     % Form the name for exchange
     Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ Rand),

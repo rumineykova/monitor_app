@@ -1,4 +1,4 @@
-local protocol flatpingpong at p1( 
+local protocol looppingpong at p1( 
 	role s1, role s2
 	)
 {
