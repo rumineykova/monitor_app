@@ -222,7 +222,7 @@ exc_create(State, Count, SN) ->
         state = State,
         count = Count,
         secret_number = SN
-    }.
+    }.%possible states undef, waiting, conver, 
 
 %% ====================================================================
 %% Database row for protocols

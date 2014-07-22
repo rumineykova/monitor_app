@@ -58,7 +58,7 @@ handle_info(#'basic.cancel_ok'{}, State) ->
 
 
 handle_info({#'basic.deliver'{delivery_tag = Tag}, Content}, {Chn, _, Master, _} = State) ->
-    lager:info("[CONSUMER] delivered"),
+    %lager:info("[CONSUMER] delivered"),
 
     #amqp_msg{payload = Payload} = Content,
     Dpld = bert:decode(Payload),

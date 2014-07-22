@@ -76,7 +76,6 @@ disconnect(Name) ->
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 start_link(Path, State) ->
-    %lager:warning("[~p] Start_links params ~p",[self(),State]),
     NState = data_utils:role_data_update(conn, State, data_utils:conn_create(undef,undef,undef,undef,undef,undef)),
     gen_server:start_link(?MODULE, {Path,NState}, []).
 
@@ -96,10 +95,10 @@ start_link(Path, State) ->
 %% ====================================================================
 init({Path, State}) ->
     case db_utils:ets_lookup_raw(child,State#role_data.id) of
-        [P] ->
+        [P] -> lager:info("[~p] Normal initialitzation",[self()]),
             db_utils:ets_insert(child, P#child_entry{worker = self()} ),
             recovery_init(State, P#child_entry.data);
-        []  ->
+        []  -> lager:info("[~p] Recovery initialitzation",[self()]),
             SData = #child_data{ protocol = State#role_data.spec#spec.protocol, role = State#role_data.spec#spec.role, secret_number = undef, count = 0, num_lines = undef},
             Ce = #child_entry{ id = State#role_data.id, worker = self(), client = State#role_data.spec#spec.imp_ref, data = SData},
             true = db_utils:ets_insert(child, Ce),
@@ -112,26 +111,22 @@ init({Path, State}) ->
 
 zero_init(Path, State) ->
 
-    lager:info("ZERO"),
     Role = State#role_data.spec#spec.role,
 
     %This method will load and in case of not having the file requestes it from the source
     Scr = manage_projection_file(Path, State),
-    lager:info("[ZERo] DONE"),
 
     {ok, NumLines} = case db_utils:get_table(Role) of
         {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
         {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
         P -> lager:info("~p",[P]),P
     end,
-    lager:info("[ZERo] DONE"),
 
     St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
         State#role_data.spec#spec.imp_ref,
         Role,
         State#role_data.spec#spec.funcs),
 
-    lager:info("[ZERo] DONE"),
 
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
@@ -143,18 +138,15 @@ zero_init(Path, State) ->
     Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
         Channel,
         Role),
-    lager:info("[ZERo] DONE"),
 
     Cons = role_consumer:start_link({Channel,Q,self()}),
 
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
-    lager:info("[ZERo] DONE"),
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(undef, 0, undef)}]),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(waiting, 0, undef)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
-    lager:info("[ZERo] DONE"),
     {ok, NArgs}.
 
 
@@ -162,7 +154,6 @@ zero_init(Path, State) ->
 recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= undef->
 
     %TODO: make sure table exists
-
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
             Ch = rbbt_utils:open_channel(Con),{Con, Ch};
@@ -183,14 +174,16 @@ recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= un
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, Prot, Cons),
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_data.num_lines),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, {ok}},{exc, data_utils:exc_create(ready, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},
+                                                     {spec,NSpec},
+                                                     {state, {ok}},
+                                                     {exc, data_utils:exc_create(waiting, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs};
 recovery_init(State, SavedState) ->
 
     %TODO: make sure table exists
-
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
             Ch = rbbt_utils:open_channel(Con),{Con, Ch};
@@ -212,7 +205,7 @@ recovery_init(State, SavedState) ->
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, SavedState#child_data.num_lines),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(ready, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(conver, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs}.
@@ -239,7 +232,8 @@ recovery_init(State, SavedState) ->
     Timeout :: non_neg_integer() | infinity,
     Reason :: term().
 %% ====================================================================
-handle_call({create,_Protocol},_From,State)->
+handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =:= waiting->
+    lager:info("[~p] Create call received",[self()]),
     % Generate aleatori number for private conversations
 	Rand =[integer_to_list(crypto:rand_uniform(1, 10)) || _ <- lists:seq(1, 6)],
     % [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)],
@@ -258,8 +252,10 @@ handle_call({create,_Protocol},_From,State)->
     % Update State with the new data
     Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
     NState = data_utils:role_data_update(conn, State, Conn),
-
+    %NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,data_utils:exc_update(state,State#role_data.exc,conver)}]),
     {reply,ok,NState};
+handle_call({create,_Protocol},_From,State) ->
+    {reply, {error, "already in a conversation"}, State};
 
 handle_call({init_state}, _From, State)->
 
@@ -267,10 +263,11 @@ handle_call({init_state}, _From, State)->
     %% If an error is the response then the process ends itself, if not continues as normal
     lager:info("init_state ~p",[State#role_data.state]),
     case State#role_data.state of
-        {ok} -> lager:info("st ok"),{reply, {ok}, State};
+        {ok} -> {reply, {ok}, State};
         {error, R} = K -> lager:info("st error"), {stop,R,K,State}
     end;
-handle_call(_Request, _From, State) ->
+handle_call(Request, _From, State) ->
+    lager:warning("[~p] Unkwon call ~p",[self(),Request]),
     {reply, ok, State}.
 
 
@@ -285,7 +282,8 @@ handle_call(_Request, _From, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast({create, Src, Rand},State) ->
+handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
+    lager:info("[~p] Create cast received from ~p",[self(), Src]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -305,7 +303,8 @@ handle_cast({create, Src, Rand},State) ->
 
     %Update the State with the new data
     Conn = data_utils:conn_update_mult(State#role_data.conn, [{active_cns, Cons},{active_q, Q},{active_exc, Prot}]),
-    Exc = data_utils:exc_update(secret_number, State#role_data.exc, Rand),
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{secret_number, Rand},{state, conver}]),
+    %Exc = data_utils:exc_update(secret_number, State#role_data.exc, Rand),
     NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
     %Publish the confirmation of join
@@ -313,7 +312,7 @@ handle_cast({create, Src, Rand},State) ->
 
     {noreply, NState};
 handle_cast({confirm,Role},State) ->
-
+    
     Roles = [State#role_data.spec#spec.role | State#role_data.spec#spec.roles],
 
     NRoles = lists:delete(Role,Roles),
@@ -321,8 +320,8 @@ handle_cast({confirm,Role},State) ->
     lager:info("[~p] Wait for confirmation ~p",[self(), NRoles]),
     NState = case wait_for_confirmation(NRoles) of
         true -> lager:info("[~p] All roles confirmed",[self()]),
-            gen_server:cast(self(),{ready}),
-            bcast_msg_to_roles(others,State,{ready}),
+            %gen_server:cast(self(),{ready}),
+            bcast_msg_to_roles(all,State,{ready}),
             State;
 
         false ->lager:error("[~p] Timeout",[self()]),
@@ -335,12 +334,11 @@ handle_cast({confirm,Role},State) ->
 
     {noreply, NState};
 handle_cast({ready},State) ->
+    lager:info("[~p] Sending READY to ~p",[self(), State#role_data.spec#spec.imp_ref]),
     gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,ready,{ready}}),
-    Exc = data_utils:exc_update_mult(State#role_data.exc, [{state, ready},{count, 0}]),
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{state, conver},{count, 0}]),
     {noreply, data_utils:role_data_update(exc, State, Exc)};
-handle_cast({send,Dest,Sig,Cont} = Pc, State)  ->
-
-    lager:info("[~p] Sending Message ~p",[self(),Pc]),
+handle_cast({send,Dest,Sig,Cont} = Pc, State) when State#role_data.exc#exc.state =:= conver ->
 
     Record = db_utils:get_row(State#role_data.spec#spec.role, State#role_data.exc#exc.count),
 
@@ -366,9 +364,10 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State)  ->
     NState = data_utils:role_data_update(exc, State, Exc),
     check_for_termination(NState, Exc#exc.count),
     {noreply,NState};
-handle_cast({msg,_Ordest,Sig,Cont}=Pc,State)  ->
-
-    lager:info("[~p] Received message Message ~p",[self(),Pc]),
+handle_cast({send,Dest,Sig,Cont} = Pc, State) ->
+    gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error,{error, sent_and_no_active_conversation}}),
+    {noreply, State};
+handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) when State#role_data.exc#exc.state =:= conver ->
 
     Record = db_utils:get_row(State#role_data.spec#spec.role, State#role_data.exc#exc.count),
 
@@ -391,7 +390,11 @@ handle_cast({msg,_Ordest,Sig,Cont}=Pc,State)  ->
     NState = data_utils:role_data_update(exc, State, Exc),
     check_for_termination(NState, Exc#exc.count),
     {noreply,NState};
+handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) ->
+    gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error, {error, recv_and_no_active_conversation}}),
+    {noreply, State};
 handle_cast({'end',_Prot},State)->
+    lager:info("[~p] 'end' cast",[self()]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -405,10 +408,13 @@ handle_cast({'end',_Prot},State)->
     Cons = role_consumer:start_link({Channel,Q,self()}),
 
     Aux = data_utils:conn_create(State#role_data.conn#conn.connection,Channel,undef,Q,State#role_data.spec#spec.protocol,Cons),
-    NArgs = data_utils:role_data_update(conn, State, Aux),
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{state, waiting}]),
+    NArgs = data_utils:role_data_update_mult(State,[{conn, Aux}, {exc, Exc}]),
+    %NArgs = data_utils:role_data_update(conn, State, Aux),
 
     {noreply,NArgs};
 handle_cast({terminated,_Prot},State)->
+    lager:info("[~p] terminated cast",[self()]),
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
     role:'end'(self(),State#role_data.spec#spec.protocol),
 
@@ -422,7 +428,8 @@ handle_cast({crash},State)->
     {stop, abnormal, State};
 handle_cast({stop},State)->
     {stop, normal, State};
-handle_cast(_Request, State) ->
+handle_cast(Request, State) ->
+    lager:warning("[~p] Unkwon cast ~p",[self(), Request]),
     {noreply, State}.
 
 %% handle_info/2
@@ -469,14 +476,13 @@ handle_info(Msg, State) ->
     | term().
 %% ====================================================================
 terminate(normal, State) ->
-    lager:error("terminating role with reason NORM!!!!"),
+    lager:info("[~p] Terminating role normally",[self()]),
 
     db_utils:ets_remove_child_entry(State#role_data.id),
 
     ok = terminate_consumer(State),
 
     List = ets:foldl(fun(E, Acc)-> [E | Acc] end, [], child),
-    lager:info("CLIENT ~n~n ~p ~n~n",[List]),
 
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
     %% Close the connection
@@ -484,7 +490,7 @@ terminate(normal, State) ->
     amqp_connection:close(State#role_data.conn#conn.connection),
     ok;
 terminate(Reason, State) ->
-    lager:error("terminating role with reason ~p",[Reason]),
+    lager:info("[~p] Terminating role with reason ~p",[self(),Reason]),
 
     [P] = db_utils:ets_lookup_raw(child, State#role_data.id),
     %TODO: AM I KILLLING THE CHANNEL BEFORE ROLE_CONSUMER ENDS??????
@@ -543,7 +549,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 check_signatures_and_methods(Protocol, Ref, TableName, CallBackList) ->
     case check_signatures(TableName, CallBackList) of
-        {ok} ->  lager:info("sig done"),
+        {ok} ->  lager:info("[~p] Signature checking done",[self()]),
             %be carefull dont put anything after check_method it modifies the return!!
             check_method(Protocol, Ref, CallBackList);
         M -> M
@@ -665,7 +671,7 @@ open_reception_socket(Port)->
 acceptor(Listen) ->
     case gen_tcp:accept(Listen) of
         {ok,Socket} -> Socket;
-        {error, Reason} -> io:format("Could not be accepted ~s ~n",[Reason])
+        {error, Reason} -> lager:error("Could not be accepted ~s ~n",[Reason])
     end.
 
 
