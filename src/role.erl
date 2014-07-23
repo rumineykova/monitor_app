@@ -364,7 +364,7 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State) when State#role_data.exc#exc.state
     NState = data_utils:role_data_update(exc, State, Exc),
     check_for_termination(NState, Exc#exc.count),
     {noreply,NState};
-handle_cast({send,Dest,Sig,Cont} = Pc, State) ->
+handle_cast({send,_Dest,_Sig,_Cont}, State) ->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error,{error, sent_and_no_active_conversation}}),
     {noreply, State};
 handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) when State#role_data.exc#exc.state =:= conver ->
@@ -390,7 +390,7 @@ handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) when State#role_data.exc#exc.state 
     NState = data_utils:role_data_update(exc, State, Exc),
     check_for_termination(NState, Exc#exc.count),
     {noreply,NState};
-handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) ->
+handle_cast({msg,_Ordest,_Sig,_Cont},State) ->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error, {error, recv_and_no_active_conversation}}),
     {noreply, State};
 handle_cast({'end',_Prot},State)->
@@ -481,8 +481,6 @@ terminate(normal, State) ->
     db_utils:ets_remove_child_entry(State#role_data.id),
 
     ok = terminate_consumer(State),
-
-    List = ets:foldl(fun(E, Acc)-> [E | Acc] end, [], child),
 
     rbbt_utils:delete_q(State#role_data.conn#conn.active_chn,State#role_data.conn#conn.active_q),
     %% Close the connection
