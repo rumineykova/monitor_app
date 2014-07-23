@@ -1,4 +1,14 @@
 Nonterminals
+
+module
+package_decl
+package_name
+import_decl_iterator 
+import_decl
+payload_type_decl_iterator 
+payload_type_decl
+protocol_decl
+
 local_protocol_decl
 local_protocol_body
 local_interaction_block
@@ -20,8 +30,30 @@ identifier
 role_list.
 
 
-Terminals 'and' 'as' 'at' 'by' 'catch' 'choice' 'continue' 'create' 'do' 'enter' 'from' 'global' 'import' 'instantiates' 'interruptible' 'local' 'or' 'par'	'protocol' 'rec' 'role' 'spawns' 'throw' 'to' 'with' '(' ')' '{' '}' ';' ',' 'atom'.
-Rootsymbol local_protocol_decl.
+Terminals 'and' 'as' 'at'   'choice' 'continue'   'from'  'import'  'local' 'or' 'par'	'protocol' 'rec' 'role'  'to' '(' ')' '{' '}' ';' ',' 'atom' '<' '>' type '.' .
+
+Rootsymbol module.
+
+module 	->	package_decl import_decl_iterator payload_type_decl_iterator  protocol_decl: $4.
+
+package_decl 	->	module package_name.
+package_name	->	identifier '.' identifier.
+package_name 	->  identifier.
+
+import_decl_iterator -> import_decl import_decl_iterator.
+import_decl_iterator -> import_decl.
+
+import_decl -> import package_name.
+import_decl -> from package_name import identifier as identifier.
+import_decl -> from package_name import identifier.
+
+payload_type_decl_iterator -> payload_type_decl payload_type_decl_iterator.
+payload_type_decl_iterator -> payload_type_decl.
+payload_type_decl 	->	 type  '<' identifier '>' identifier from identifier  as identifier.  
+
+
+protocol_decl -> local_protocol_decl : $1.
+
 
 local_protocol_decl -> 'local' 'protocol' identifier 'at' role_name '(' role_list ')' local_protocol_body : {protocol, '$3','$5','$7','$9'}.
 
