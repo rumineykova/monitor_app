@@ -338,7 +338,7 @@ spawn_role(Id, RoleData, RSup) ->
     %Taking the resources path from the config file
     Path = case application:get_env(kernel, resources_path) of
         undefined -> ?RESOURCES_PATH;
-        {P} -> P
+        {ok,P} -> P
     end,
 
     role_sup:start_child(RSup#prot_sup.ref, {Path , New_role_data}),

@@ -131,7 +131,7 @@ zero_init(Path, State) ->
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
             Ch = rbbt_utils:open_channel(Con),{Con, Ch};
-        {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+        {ok, {User, Pwd, Host}} -> Con = rbbt_utils:connect(Host, User, Pwd ),
             Ch = rbbt_utils:open_channel(Con), {Con, Ch}
     end,
 
@@ -157,7 +157,7 @@ recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= un
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
             Ch = rbbt_utils:open_channel(Con),{Con, Ch};
-        {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+        {ok, {User, Pwd, Host}} -> Con = rbbt_utils:connect(Host, User, Pwd ),
             Ch = rbbt_utils:open_channel(Con), {Con, Ch}
     end,
 
@@ -187,7 +187,7 @@ recovery_init(State, SavedState) ->
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
             Ch = rbbt_utils:open_channel(Con),{Con, Ch};
-        {User, Pwd, Host} -> Con = rbbt_utils:connect(Host, User, Pwd ),
+        {ok, {User, Pwd, Host}} -> Con = rbbt_utils:connect(Host, User, Pwd ),
             Ch = rbbt_utils:open_channel(Con), {Con, Ch}
     end,
 
@@ -633,8 +633,8 @@ manage_projection_file(Path, State)->
 
     %TODO: solve conflictivity folders when downlaod and source in the localhost
     % Answare: There is no conflictivit I dont want to download when running from and app We share folder no?
-    FileName = atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
-
+    FileName = atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
+    lager:info("~p",[FileName]),
     case file:read_file(Path ++ FileName) of
         {ok, Binary} ->
             {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
@@ -645,7 +645,7 @@ manage_projection_file(Path, State)->
 
             {Host, Port} = case application:get_env(kernel, download_port) of
                 undefined -> {?DHOST, ?PORT};
-                {H,P} -> {H,P}
+                {ok, {H,P}} -> {H,P}
             end,
 
             Listen = open_reception_socket(Port),
@@ -892,7 +892,8 @@ prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname}) ->
 prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname}) ->
     db_utils:add_row(TbName, Num, {econtinue, Erecname}),
     {TbName,RName,Num+1,Special,Erecname};
-prot_iterator(_, _) ->
+prot_iterator(M, N) ->
+    lager:error("~p ~p",[M, N]),
     abort.
 
 
@@ -914,7 +915,7 @@ wait_for_confirmation(Roles) ->
             NRoles = lists:delete(Role,Roles),
             wait_for_confirmation(NRoles);
         Msg -> lager:error("[~p] Unkonw message receive instaed of confirm,~p",[self(),Msg])
-    after 1000 ->
+    after 10000 ->
             lager:info("[~p] Confirmation timeout",[self()]),
             false
     end.
@@ -932,6 +933,10 @@ wait_for_confirmation(Roles) ->
 
 mytokens(Word) ->
     case Word of
+        '<' -> true;
+        '>' -> true;
+        type -> true;
+        module -> true;
         'and' -> true;
         as -> true;
         at -> true;
