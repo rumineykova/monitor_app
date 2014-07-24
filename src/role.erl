@@ -291,7 +291,7 @@ handle_call(Request, _From, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
+handle_cast({create, Scr, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
     lager:info("[~p] IM THE SPECIAL ~p",[self(), State]),
     %Terminating the consumer
     ok = terminate_consumer(State),
