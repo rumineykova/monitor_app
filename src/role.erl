@@ -26,7 +26,7 @@
 -define(DHOST, "localhost").
 -define(PORT, 65005).
 
--define(TIMER_TIMEOUT, 2000).
+-define(TIMER_TIMEOUT, 10000).
 %TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
 -define(MUST_METHODS, [{ready,2},
         {config_done,2},
@@ -146,10 +146,9 @@ zero_init(Path, State) ->
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
 
-    Exc = data_utils:exc_create(waiting, 0, undef)}
-    ExcU = data_utils:exc_update_mult(Exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
-                                                            {confirmation_state, none}]),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, ExcU]),
+    Exc = data_utils:exc_create(waiting, 0, undef),
+   
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, Exc}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs}.
@@ -254,14 +253,18 @@ handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =
         State#role_data.conn#conn.active_exc,
         {create,State#role_data.spec#spec.role,Rand}),
 
-    Timer = spawn(?MODULE, the_timer, [self(), ?TIMER_TIMEOUT]),
+    gen_server:cast(self(), {create_self, State#role_data.spec#spec.role, Rand}),
 
+    Timer = spawn(?MODULE, the_timer, [self(), ?TIMER_TIMEOUT]),
 
     % Update State with the new data
     Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
-    NState = data_utils:role_data_update(conn, State, Conn),
-    %NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,Exc}]),
-    
+    %NState = data_utils:role_data_update(conn, State, Conn),
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
+                                                            {confirmation_state, none},
+                                                            {timer_pid, Timer}]),
+    NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,Exc}]),
+    lager:info("[~p][~p] START CREATE ~p STATE ~p",[self(), NState#role_data.spec#spec.role, Rand, NState#role_data.exc]),
     {reply,ok,NState};
 handle_call({create,_Protocol},_From,State) ->
     {reply, {error, "already in a conversation"}, State};
@@ -273,7 +276,7 @@ handle_call({init_state}, _From, State)->
     lager:info("init_state ~p",[State#role_data.state]),
     case State#role_data.state of
         {ok} -> {reply, {ok}, State};
-        {error, R} = K -> lager:info("st error"), {stop,R,K,State}
+        {error, R} = K -> lager:info("st error"), {stop,R,K,State}  
     end;
 handle_call(Request, _From, State) ->
     lager:warning("[~p] Unkwon call ~p",[self(),Request]),
@@ -291,8 +294,8 @@ handle_call(Request, _From, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast({create, Scr, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
-    lager:info("[~p] IM THE SPECIAL ~p",[self(), State]),
+handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
+    lager:info("[~p][~p] IM THE ~p SPECIAL ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -318,11 +321,14 @@ handle_cast({create, Scr, Rand},State) when State#role_data.exc#exc.state =:= wa
 
     %Publish the confirmation of join
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
-
     {noreply, NState};
+handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
+    {noreply, State};
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
-    lager:info("[~p] Create cast received from ~p",[self(), Src]),
-    lager:info("[~p] Not ~p",[self(), State]),
+    lager:info("[~p][~p] NOT ~p ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
+
+    %lager:info("[~p] Create cast received from ~p",[self(), Src]),
+    %lager:info("[~p] Not ~p",[self(), State]),
 
     %Terminating the consumer
     ok = terminate_consumer(State),
@@ -348,12 +354,12 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
     %Publish the confirmation of join
-    timer:sleep(crypto:rand_uniform(1000,3000)),
+    %timer:sleep(crypto:rand_uniform(1000,3000)),
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
-    lager:info("Confirmation message sent from ~p",[State#role_data.spec#spec.role]),
+    %lager:info("Confirmation message sent from ~p",[State#role_data.spec#spec.role]),
     {noreply, NState};
 handle_cast({confirm,Role},State) ->
-    lager:info("~p",[State]),
+    %lager:info("~p",[State]),
     NState = case lists:delete(Role, State#role_data.exc#exc.confirmation_list) of
         [] ->   State#role_data.exc#exc.timer_pid ! kill,
                 lager:info("[~p] All roles confirmed",[self()]),
@@ -450,7 +456,7 @@ handle_cast({'end',_Prot},State)->
     Cons = role_consumer:start_link({Channel,Q,self()}),
 
     Aux = data_utils:conn_create(State#role_data.conn#conn.connection,Channel,undef,Q,State#role_data.spec#spec.protocol,Cons),
-    Exc = data_utils:exc_update_mult(Exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
                                             {confirmation_state, none},
                                             {state, waiting}]),
     NArgs = data_utils:role_data_update_mult(State,[{conn, Aux}, {exc, Exc}]),
