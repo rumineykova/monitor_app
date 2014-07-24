@@ -139,7 +139,7 @@ init(_State) ->
 handle_call({register,Pid},_From,State) ->
     Reply = register_imp(Pid),
     monitor(process,Pid),
-    lager:info("[MONSCR] [REGISTER] reply: ~p",[Reply]),
+    %lager:info("[MONSCR] [REGISTER] reply: ~p",[Reply]),
     {reply,Reply,State};
 handle_call({request_id, Id}, _From, State) ->
     {reply, db_utils:ets_lookup_child_pid(Id), State};

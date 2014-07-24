@@ -62,7 +62,10 @@
 
 -record(exc,{state,
         count,
-        secret_number}
+        secret_number,
+        confirmation_list,
+        confirmation_state,
+        timer_pid}
 ).
 
 %%

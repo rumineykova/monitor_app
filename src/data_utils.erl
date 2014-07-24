@@ -210,12 +210,18 @@ exc_update_mult(Exc, ValList) when is_list(ValList) ->
         end, Exc, ValList).
 
 
-exc_update(secret_number, Conn, Sn)->
-    Conn#exc{ secret_number = Sn};
-exc_update(count, Conn, Val)->
-    Conn#exc{ count = Val };
-exc_update(state, Conn, Val)->
-    Conn#exc{ state = Val }.
+exc_update(timer_pid, Exc, Val) ->
+    Exc#exc{ timer_pid = Val };
+exc_update(confirmation_state, Exc, Val) ->
+    Exc#exc{ confirmation_state = Val };
+exc_update(confirmation_list, Exc, Val) ->
+    Exc#exc{ confirmation_list = Val };
+exc_update(secret_number, Exc, Val)->
+    Exc#exc{ secret_number = Val};
+exc_update(count, Exc, Val)->
+    Exc#exc{ count = Val };
+exc_update(state, Exc, Val)->
+    Exc#exc{ state = Val }.
 
 exc_create(State, Count, SN) ->
     #exc{

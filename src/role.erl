@@ -26,6 +26,7 @@
 -define(DHOST, "localhost").
 -define(PORT, 65005).
 
+-define(TIMER_TIMEOUT, 2000).
 %TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
 -define(MUST_METHODS, [{ready,2},
         {config_done,2},
@@ -144,7 +145,11 @@ zero_init(Path, State) ->
     Conn = data_utils:conn_create(Connection, Channel, undef, Q, State#role_data.spec#spec.protocol, Cons),
 
     NSpec = data_utils:spec_update(lines, State#role_data.spec, NumLines),
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, data_utils:exc_create(waiting, 0, undef)}]),
+
+    Exc = data_utils:exc_create(waiting, 0, undef)}
+    ExcU = data_utils:exc_update_mult(Exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
+                                                            {confirmation_state, none}]),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, ExcU]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs}.
@@ -249,10 +254,14 @@ handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =
         State#role_data.conn#conn.active_exc,
         {create,State#role_data.spec#spec.role,Rand}),
 
+    Timer = spawn(?MODULE, the_timer, [self(), ?TIMER_TIMEOUT]),
+
+
     % Update State with the new data
     Conn = data_utils:conn_update(active_exc, State#role_data.conn, Prot),
     NState = data_utils:role_data_update(conn, State, Conn),
-    %NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,data_utils:exc_update(state,State#role_data.exc,conver)}]),
+    %NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,Exc}]),
+    
     {reply,ok,NState};
 handle_call({create,_Protocol},_From,State) ->
     {reply, {error, "already in a conversation"}, State};
@@ -283,7 +292,7 @@ handle_call(Request, _From, State) ->
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
-    lager:info("[~p] IM THE SPECIAL ~p",[self(), Src]),
+    lager:info("[~p] IM THE SPECIAL ~p",[self(), State]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -313,6 +322,8 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     {noreply, NState};
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
     lager:info("[~p] Create cast received from ~p",[self(), Src]),
+    lager:info("[~p] Not ~p",[self(), State]),
+
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -342,27 +353,28 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     lager:info("Confirmation message sent from ~p",[State#role_data.spec#spec.role]),
     {noreply, NState};
 handle_cast({confirm,Role},State) ->
-    
-    Roles = [State#role_data.spec#spec.role | State#role_data.spec#spec.roles],
+    lager:info("~p",[State]),
+    NState = case lists:delete(Role, State#role_data.exc#exc.confirmation_list) of
+        [] ->   State#role_data.exc#exc.timer_pid ! kill,
+                lager:info("[~p] All roles confirmed",[self()]),
+                bcast_msg_to_roles(all,State,{ready}),
+                Exc = data_utils:exc_update_mult(State#role_data.exc, [{confirmation_list,[]},{confirmation_state, all_confirmed}]),
+                data_utils:role_data_update(exc, State, Exc);
 
-    NRoles = lists:delete(Role,Roles),
-
-    lager:info("[~p] Wait for confirmation ~p",[self(), NRoles]),
-    NState = case wait_for_confirmation(NRoles) of
-        true -> lager:info("[~p] All roles confirmed",[self()]),
-            %gen_server:cast(self(),{ready}),
-            bcast_msg_to_roles(all,State,{ready}),
-            State;
-
-        false ->lager:error("[~p] Timeout",[self()]),
-            bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
-            gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
-            role:'end'(self(),"time_out waiting for confirmation"),
-            Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
-            data_utils:role_data_update_mult(State, [{exc, Exc}])
+        New_waiting_list -> State#role_data.exc#exc.timer_pid ! restart,
+                Exc = data_utils:exc_update( confirmation_list , State#role_data.exc, New_waiting_list),
+                data_utils:role_data_update(exc, State, Exc)
     end,
-
     {noreply, NState};
+handle_cast({confirmation_timeout}, State) ->
+    lager:error("[~p] Timeout",[self()]),
+    bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
+    gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
+    role:'end'(self(),"time_out waiting for confirmation"),
+    Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
+    data_utils:role_data_update_mult(State, [{exc, Exc}]),
+
+    {noreply, State};
 handle_cast({ready},State) ->
     lager:info("[~p] Sending READY to ~p",[self(), State#role_data.spec#spec.imp_ref]),
     gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,ready,{ready}}),
@@ -438,7 +450,9 @@ handle_cast({'end',_Prot},State)->
     Cons = role_consumer:start_link({Channel,Q,self()}),
 
     Aux = data_utils:conn_create(State#role_data.conn#conn.connection,Channel,undef,Q,State#role_data.spec#spec.protocol,Cons),
-    Exc = data_utils:exc_update_mult(State#role_data.exc, [{state, waiting}]),
+    Exc = data_utils:exc_update_mult(Exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
+                                            {confirmation_state, none},
+                                            {state, waiting}]),
     NArgs = data_utils:role_data_update_mult(State,[{conn, Aux}, {exc, Exc}]),
     %NArgs = data_utils:role_data_update(conn, State, Aux),
 
@@ -664,7 +678,7 @@ manage_projection_file(Path, State)->
     %TODO: solve conflictivity folders when downlaod and source in the localhost
     % Answare: There is no conflictivit I dont want to download when running from and app We share folder no?
     FileName = atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ atom_to_list(State#role_data.spec#spec.role) ++ ".scr",
-    lager:info("~p",[FileName]),
+
     case file:read_file(Path ++ FileName) of
         {ok, Binary} ->
             {ok,Final,_} = erl_scan:string(binary_to_list(Binary),1,[{reserved_word_fun, fun mytokens/1}]),
@@ -850,7 +864,7 @@ translate_parsed_to_mnesia(Role,Content)->
     Mer = db_utils:ets_create(tmp_table, [set]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
     fix_endings(Role,Mer,Tnum-1),
-    db_utils:ets_print_table(Role, 0, Tnum),
+    %db_utils:ets_print_table(Role, 0, Tnum),
     {ok,Tnum}.
 
 
@@ -930,28 +944,20 @@ prot_iterator(M, N) ->
 
 
 
-%% wait_for_confirmation/2
+%% timer_process/2
 %% ====================================================================
 %% @doc
--spec wait_for_confirmation(Roles :: list()) -> Result when
-    Result :: true
-    | false.
+
 %% ====================================================================
-wait_for_confirmation([])->
-    true;
-wait_for_confirmation(Roles) ->
+the_timer(Master, Time) ->
     receive
-        {'$gen_cast',{confirm,Role}} -> 
-            lager:info("[~p] Confirm message from ~p",[self(),Role]),
-            NRoles = lists:delete(Role,Roles),
-            wait_for_confirmation(NRoles);
-        Msg -> lager:error("[~p] Unkonw message receive instaed of confirm,~p",[self(),Msg])
-    after 10000 ->
-            lager:info("[~p] Confirmation timeout",[self()]),
-            false
+        restart ->
+            the_timer(Master, Time);
+        kill ->
+            done
+    after Time ->
+            gen_server:cast(Master, {confirmation_timeout})
     end.
-
-
 
 
 %% mytokens/1
