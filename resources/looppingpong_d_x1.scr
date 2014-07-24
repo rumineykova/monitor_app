@@ -1,3 +1,5 @@
+module test;
+
 local protocol looppingpong_p1 at x1(role x1, role x2) {
 	log_process(pid) to x2;
 	rec cont

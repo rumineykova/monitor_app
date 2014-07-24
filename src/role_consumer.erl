@@ -47,7 +47,7 @@ init({Channel,Q,Master}) ->
 
 %% @private
 handle_info(#'basic.consume_ok'{consumer_tag=Tag},  {_,_,_,Tag} = State) ->
-      lager:info("[CONSUMER][~p] binded OK ~p",[self(), Tag]),
+      %lager:info("[CONSUMER][~p] binded OK ~p",[self(), Tag]),
       {noreply, State};
 
 
@@ -58,10 +58,11 @@ handle_info(#'basic.cancel_ok'{}, State) ->
 
 
 handle_info({#'basic.deliver'{delivery_tag = Tag}, Content}, {Chn, _, Master, _} = State) ->
-    %lager:info("[CONSUMER] delivered"),
 
     #amqp_msg{payload = Payload} = Content,
     Dpld = bert:decode(Payload),
+
+    %lager:info("[CONSUMER] delivered ~p",[Payload]),
 
     ok = gen_server:cast(Master,Dpld),
     amqp_channel:cast(Chn, #'basic.ack'{delivery_tag = Tag}),
@@ -77,7 +78,7 @@ handle_info(Mse, State) ->
 
 %% @private
 handle_call(stop, _From,  {Chn,_,_,Ct}= State) ->
-  lager:info("[CONSUMER] STOP called"),
+  %lager:info("[CONSUMER] STOP called"),
   rbbt_utils:unsubscribe(Chn, Ct),
   {reply, ok, State}.
 

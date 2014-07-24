@@ -282,8 +282,8 @@ handle_call(Request, _From, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
-    lager:info("[~p] Create cast received from ~p",[self(), Src]),
+handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
+    lager:info("[~p] IM THE SPECIAL ~p",[self(), Src]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -310,6 +310,36 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     %Publish the confirmation of join
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
 
+    {noreply, NState};
+handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
+    lager:info("[~p] Create cast received from ~p",[self(), Src]),
+    %Terminating the consumer
+    ok = terminate_consumer(State),
+    %role_consumer:stop(State#role_data.conn#conn.active_cns),
+
+    %Form random names for the queue and exchange
+    BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ Rand),
+    Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ Rand),
+
+    Chn = State#role_data.conn#conn.active_chn,
+
+    %Declare the queue an bind it to the new exchange
+    Q = rbbt_utils:declare_q(Chn, BName),
+    rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
+
+    %Spawn a new consumer for the new queue
+    Cons = role_consumer:start_link({Chn, Q, self()}),
+
+    %Update the State with the new data
+    Conn = data_utils:conn_update_mult(State#role_data.conn, [{active_cns, Cons},{active_q, Q},{active_exc, Prot}]),
+    Exc = data_utils:exc_update_mult(State#role_data.exc, [{secret_number, Rand},{state, conver}]),
+    %Exc = data_utils:exc_update(secret_number, State#role_data.exc, Rand),
+    NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
+
+    %Publish the confirmation of join
+    timer:sleep(crypto:rand_uniform(1000,3000)),
+    rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
+    lager:info("Confirmation message sent from ~p",[State#role_data.spec#spec.role]),
     {noreply, NState};
 handle_cast({confirm,Role},State) ->
     
@@ -820,6 +850,7 @@ translate_parsed_to_mnesia(Role,Content)->
     Mer = db_utils:ets_create(tmp_table, [set]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
     fix_endings(Role,Mer,Tnum-1),
+    db_utils:ets_print_table(Role, 0, Tnum),
     {ok,Tnum}.
 
 
@@ -911,7 +942,7 @@ wait_for_confirmation([])->
 wait_for_confirmation(Roles) ->
     receive
         {'$gen_cast',{confirm,Role}} -> 
-            %lager:info("[~p] Confirm message from ~p",[self(),Role]),
+            lager:info("[~p] Confirm message from ~p",[self(),Role]),
             NRoles = lists:delete(Role,Roles),
             wait_for_confirmation(NRoles);
         Msg -> lager:error("[~p] Unkonw message receive instaed of confirm,~p",[self(),Msg])

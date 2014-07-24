@@ -16,7 +16,7 @@
 %% API
 -export([install/2, get_row/2, update_row/3, add_row/3, get_table/1]).
 -export([ets_create/2, ets_lookup/2,ets_lookup_raw/2, ets_insert/2, ets_delete/1,ets_lookup_child_pid/1, ets_lookup_client_pid/1]).
--export([ets_key_pattern_match/1,ets_remove_child_entry/1]).
+-export([ets_key_pattern_match/1,ets_remove_child_entry/1,ets_print_table/3]).
 %Might be removed ->
 -export([print_db/2]).
 
@@ -172,5 +172,16 @@ ets_delete(TbName) ->
         undefnied -> ok;
         _ -> ets:delete(TbName)
     end.
+
+
+ets_print_table(TbName, Cur, Total) when Cur =:= Total->
+    lager:info("~p",[ets:lookup(TbName, Cur)]);
+ets_print_table(TbName, Cur, Total) ->
+    lager:info("~p",[ets:lookup(TbName, Cur)]),
+    ets_print_table(TbName, Cur +1, Total).
+
+
+
+
 
 
