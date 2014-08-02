@@ -1,0 +1,14 @@
+module test_looppingpong_z66;
+
+
+
+type <py>  "IntType" from "Types.py" as int;
+
+type <py>  "StringType" from "Types.py" as string;
+
+local protocol looppingpong_z66 at z66(role z1, role z2, role z3, role z4, role z5, role z6, role z7, role z8, role z9, role z10, role z11, role z12, role z13, role z14, role z15, role z16, role z17, role z18, role z19, role z20, role z21, role z22, role z23, role z24, role z25, role z26, role z27, role z28, role z29, role z30, role z31, role z32, role z33, role z34, role z35, role z36, role z37, role z38, role z39, role z40, role z41, role z42, role z43, role z44, role z45, role z46, role z47, role z48, role z49, role z50, role z51, role z52, role z53, role z54, role z55, role z56, role z57, role z58, role z59, role z60, role z61, role z62, role z63, role z64, role z65, role z66, role z67, role z68, role z69, role z70, role z71, role z72, role z73, role z74, role z75, role z76, role z77, role z78, role z79, role z80, role z81, role z82, role z83, role z84, role z85, role z86, role z87, role z88, role z89, role z90, role z91, role z92, role z93, role z94, role z95, role z96, role z97, role z98, role z99, role z100) {
+ping(string) from z65;
+ping(string) to z67;
+pong(string) from z67;
+pong(string) to z65;
+}

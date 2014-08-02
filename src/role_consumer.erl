@@ -53,7 +53,7 @@ handle_info(#'basic.consume_ok'{consumer_tag=Tag},  {_,_,_,Tag} = State) ->
 
 %% @private
 handle_info(#'basic.cancel_ok'{}, State) ->
-      lager:info("[CONSUMER] canceled"),
+      %lager:info("[CONSUMER] canceled"),
       {stop, normal, State};
 
 
@@ -70,10 +70,10 @@ handle_info({#'basic.deliver'{delivery_tag = Tag}, Content}, {Chn, _, Master, _}
 
 %% @private
 handle_info({'DOWN', _MRef, process, _Pid, _Info}, State) ->
-  lager:info("[CONSUMER] Downd"),
+  %lager:info("[CONSUMER] Downd"),
   {noreply, State};
 handle_info(Mse, State) ->
-  lager:info("[CONSUMER] UNKONWN MESSAGE ~p ",[Mse]),
+  %lager:info("[CONSUMER] UNKONWN MESSAGE ~p ",[Mse]),
 {noreply, State}.
 
 %% @private
@@ -95,7 +95,7 @@ handle_cast(_Message, State) ->
 %% Closes the channel this gen_server instance started
 %% @private
 terminate(Reason,_State)->
-  lager:info("[CONSUMER] Terminated reason ~p",[Reason]),
+  %lager:info("[CONSUMER] Terminated reason ~p",[Reason]),
   ok.
 
 

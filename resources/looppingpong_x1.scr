@@ -1,0 +1,11 @@
+module test;
+
+local protocol looppingpong_p1 at x1(role x1, role x2) {
+
+	rec cont
+	{
+		ping(string) to x2;
+		pong(string) from x2;
+		continue cont;
+	}
+}

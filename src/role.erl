@@ -195,7 +195,6 @@ recovery_init(State, SavedState) ->
             Ch = rbbt_utils:open_channel(Con), {Con, Ch}
     end,
 
-
     BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#child_data.secret_number),
     Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#child_data.secret_number),
     %Declare the queue an bind it to the new exchange
@@ -213,8 +212,6 @@ recovery_init(State, SavedState) ->
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs}.
-
-
 
 
 
@@ -322,7 +319,7 @@ handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =
     %Publish the confirmation of join
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
     {noreply, NState};
-handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
+handle_cast({create, Src, Rand},State) when State#role_data.spec#spec.role =:= Src->
     {noreply, State};
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
     lager:info("[~p][~p] NOT ~p ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
@@ -354,12 +351,12 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     NState = data_utils:role_data_update_mult(State, [{conn, Conn}, {exc, Exc}]),
 
     %Publish the confirmation of join
-    %timer:sleep(crypto:rand_uniform(1000,3000)),
+    timer:sleep(crypto:rand_uniform(100,500)),
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
     %lager:info("Confirmation message sent from ~p",[State#role_data.spec#spec.role]),
     {noreply, NState};
 handle_cast({confirm,Role},State) ->
-    %lager:info("~p",[State]),
+
     NState = case lists:delete(Role, State#role_data.exc#exc.confirmation_list) of
         [] ->   State#role_data.exc#exc.timer_pid ! kill,
                 lager:info("[~p] All roles confirmed",[self()]),
@@ -373,7 +370,7 @@ handle_cast({confirm,Role},State) ->
     end,
     {noreply, NState};
 handle_cast({confirmation_timeout}, State) ->
-    lager:error("[~p] Timeout",[self()]),
+    lager:error("[~p] Timeout ~p",[self(),State#role_data.exc#exc.confirmation_list]),
     bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
     gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
     role:'end'(self(),"time_out waiting for confirmation"),
@@ -442,7 +439,7 @@ handle_cast({msg,_Ordest,_Sig,_Cont},State) ->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error, {error, recv_and_no_active_conversation}}),
     {noreply, State};
 handle_cast({'end',_Prot},State)->
-    lager:info("[~p] 'end' cast",[self()]),
+    %lager:info("[~p] 'end' cast",[self()]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -479,7 +476,7 @@ handle_cast({crash},State)->
 handle_cast({stop},State)->
     {stop, normal, State};
 handle_cast(Request, State) ->
-    lager:warning("[~p] Unkwon cast ~p",[self(), Request]),
+    lager:warning("[~p] Unkwon cast ~p with state: ~p",[self(), Request, State]),
     {noreply, State}.
 
 %% handle_info/2
@@ -494,10 +491,10 @@ handle_cast(Request, State) ->
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) when Pid =:= State#role_data.spec#spec.imp_ref ->
-    lager:info("DOWN STOPING FOR noconnection OK"),
+    %lager:info("DOWN STOPING FOR noconnection OK"),
     {stop, normal,State};
 handle_info({'DOWN',_MonRef,process,Pid,normal}, State) when Pid =:= State#role_data.spec#spec.imp_ref ->
-    lager:info("DOwn STOPING FOR normal halt"),
+    %lager:info("DOwn STOPING FOR normal halt"),
     {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
     lager:info("Process ~p down reason: ~p ~p",[Pid, State#role_data.spec#spec.imp_ref, Reason]),
