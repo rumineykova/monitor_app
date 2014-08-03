@@ -14,7 +14,7 @@
 
 -define(RESOURCES_PATH,"resources/").
 
-
+-define(RECOVER_TIMEOUT, 20000).
 
 %% ====================================================================
 %% API exports
@@ -22,9 +22,9 @@
 %% Gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 %% Public API
--export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/2, request_id/3]).
+-export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/1, request_id/2, update_id/2, update_id/3]).
 %% Testing purposses
--export([stop/1]).
+-export([stop/1, recovered/1]).
 
 %% ====================================================================
 %% API functions
@@ -59,6 +59,14 @@ request_id(Process, Id) ->
 request_id(Id) ->
     gen_server:call({global, monscr}, {request_id, Id}).
 
+
+update_id(Process, Id, NewP)->
+    gen_server:call(Process, {update_id,  Id, NewP}).
+update_id(Id, NewP)->
+    gen_server:call({global, monscr},{updated_id, Id, NewP}).
+
+recovered(Id) ->
+    gen_server:cast({global, mosncr}, {recovered, Id}).
 
 %% stop/1
 %% ====================================================================
@@ -107,6 +115,7 @@ start_link(Args) ->
 init(_State) ->
     %% Start the in ram table for preserve role states
     db_utils:ets_create(child,  [set, named_table, public, {keypos,2}, {write_concurrency,false}, {read_concurrency,true}]),
+    db_utils:ets_create(timers,  [set, named_table, public, {keypos,1}, {write_concurrency,false}, {read_concurrency,true}]),
 
     %% Register monscr to be use globally with the names
     global:register_name(monscr,self()),
@@ -138,11 +147,15 @@ init(_State) ->
 %% ====================================================================
 handle_call({register,Pid},_From,State) ->
     Reply = register_imp(Pid),
-    monitor(process,Pid),
+    %monitor(process,Pid),
     %lager:info("[MONSCR] [REGISTER] reply: ~p",[Reply]),
     {reply,Reply,State};
 handle_call({request_id, Id}, _From, State) ->
     {reply, db_utils:ets_lookup_child_pid(Id), State};
+handle_call({update_id, Id, NewPid}, _From, State) ->
+    List = db_utils:ets_key_pattern_match(Id),
+    lists:foreach(fun(E)-> Ne = E#child_entry{ client = NewPid}, db_utils:ets_insert(child, Ne), role:update_impref(E#child_entry.worker) end,List),
+    {reply, ok, State};
 handle_call(_Request,_From,State)->
     {reply,{error,bad_args},State}.
 
@@ -167,6 +180,15 @@ handle_cast({config,{Id,_ } = Config } , State) ->
     Pid = db_utils:ets_lookup_client_pid(Id),
     gen_monrcp:send(Pid, {callback, config_done, Reply}),
     {noreply, State};
+handle_cast({recovered, Id}, State)->
+    
+    {Id, Timer} = ets:lookup(timers, Id),
+
+    Timer ! kill,
+
+    gen_monrcp:send(db_utils:ets_lookup_client_pid(Id), {callback, error, {worker_restarted , db_utils:ets_lookup_child_pid(Id)}}),
+
+    {noreply, State};
 handle_cast({stop},State) ->
     %% method to stop the monscr ||| Testing purposes not suppose to be use!
     {stop,normal, State};
@@ -186,10 +208,29 @@ handle_cast(Msg, State) ->
     NewState :: term(),
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+handle_info({'DOWN',_MonRef,process,Pid,normal}, State) ->
+    lager:info("Process Down normal"),
+    Rp = db_utils:ets_worker_pattern_match(Pid),
+    db_utils:ets_remove_child_entry(Rp#child_entry.id),
+
+    {P_id, _} = Rp#child_entry.id,
+    case db_utils:ets_key_pattern_match(P_id) of
+        [] -> db_utils:ets_remove_child_entry(P_id);
+        _ -> none
+    end,
+    {noreply, State};  
 handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) ->
     lager:info("Process ~p down",[Pid]),
-    role:stop(self()),
     {noreply, State};
+handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
+    gen_monrcp:send(Pid, {callback, error, role_down_wait_for_restart}),
+
+    Rp = db_utils:ets_worker_pattern_match(Pid),
+
+    Timer = spawn(?MODULE, the_timer, [self(), ?RECOVER_TIMEOUT, Rp#child_entry.id]),
+    ets:insert(timers, {Rp#child_entry.id, Timer}),
+
+    {noreply, State};  
 handle_info({'EXIT', Pid, Reason} , State) when Pid =:= State#internal.main_sup ->
     lager:info("Exit From the main supervisor ~p ",[Pid, Reason]),
     {noreply, State};
@@ -345,7 +386,7 @@ spawn_role(Id, RoleData, RSup) ->
     %Check if the role has started correctly if not skip the insertion and display log
     %%% %This call must be done just after Spawning the process !!!!!!!!!!!!!!!!!!!
     case role:get_init_state(db_utils:ets_lookup_child_pid(Id)) of
-        {ok} -> [];
+        {ok} -> monitor(process, db_utils:ets_lookup_child_pid(Id)), [];
         Error -> lager:error("Error starting Role, Reason: ~p",[Error]),
             [{RoleData#spec.role, Error} ]
     end.
@@ -369,3 +410,18 @@ generate_list(Key) ->
         end, [] ,List_of_Roles).
 
 
+%% timer_process/2
+%% ====================================================================
+%% @doc
+
+%% ====================================================================
+the_timer(Master, Time, Id) ->
+    receive
+        restart ->
+            the_timer(Master, Time, Id);
+        kill ->
+            done;
+        _ -> the_timer(Master, 1, Id)
+    after Time ->
+            gen_server:cast(Master, {recovery_timeout, Id})
+    end.

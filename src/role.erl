@@ -14,7 +14,7 @@
 %% API Exports
 %% ====================================================================
 
--export([start_link/2, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1]).
+-export([start_link/2, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1,update_impref/1]).
 
 -compile(export_all).
 
@@ -27,6 +27,7 @@
 -define(PORT, 65005).
 
 -define(TIMER_TIMEOUT, 10000).
+-define(RECOVER_TIMEOUT, 20000).
 %TODO: another reason why callbacks, I can verify that the methods are thre with handle_cast I can't
 -define(MUST_METHODS, [{ready,2},
         {config_done,2},
@@ -56,6 +57,9 @@ crash(Name) ->
 
 get_init_state(Name)->
     gen_server:call(Name, {init_state}).
+
+update_impref(Name)->
+    gen_server:cast(Name, {update_id}).
 
 %=============================================================================================================================================================
 %=============================================================================================================================================================
@@ -93,10 +97,10 @@ start_link(Path, State) ->
 %% ====================================================================
 init({Path, State}) ->
     case db_utils:ets_lookup_raw(child,State#role_data.id) of
-        [P] -> lager:info("[~p] Normal initialitzation",[self()]),
+        [P] -> lager:info("[~p] Recovery initialitzation",[self()]),
             db_utils:ets_insert(child, P#child_entry{worker = self()} ),
             recovery_init(State, P#child_entry.data);
-        []  -> lager:info("[~p] Recovery initialitzation",[self()]),
+        []  -> lager:info("[~p] Normal initialitzation",[self()]),
             SData = #child_data{ protocol = State#role_data.spec#spec.protocol, role = State#role_data.spec#spec.role, secret_number = undef, count = 0, num_lines = undef},
             Ce = #child_entry{ id = State#role_data.id, worker = self(), client = State#role_data.spec#spec.imp_ref, data = SData},
             true = db_utils:ets_insert(child, Ce),
@@ -181,6 +185,8 @@ recovery_init(State, SavedState) when SavedState#child_data.secret_number =:= un
                                                      {exc, data_utils:exc_create(waiting, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+    monscr:recovered(State#role_data.id),
+
     {ok, NArgs};
 recovery_init(State, SavedState) ->
 
@@ -208,6 +214,8 @@ recovery_init(State, SavedState) ->
     NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{exc, data_utils:exc_create(conver, SavedState#child_data.count, SavedState#child_data.secret_number)}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
+    monscr:recovered(State#role_data.id),
+
     {ok, NArgs}.
 
 
@@ -258,7 +266,7 @@ handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =
                                                             {confirmation_state, none},
                                                             {timer_pid, Timer}]),
     NState = data_utils:role_data_update_mult(State,[{conn, Conn},{exc,Exc}]),
-    lager:info("[~p][~p] START CREATE ~p STATE ~p",[self(), NState#role_data.spec#spec.role, Rand, NState#role_data.exc]),
+    %lager:info("[~p][~p] START CREATE ~p STATE ~p",[self(), NState#role_data.spec#spec.role, Rand, NState#role_data.exc]),
     {reply,ok,NState};
 handle_call({create,_Protocol},_From,State) ->
     {reply, {error, "already in a conversation"}, State};
@@ -289,7 +297,7 @@ handle_call(Request, _From, State) ->
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting, State#role_data.spec#spec.role =:= Src->
-    lager:info("[~p][~p] IM THE ~p SPECIAL ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
+    %lager:info("[~p][~p] IM THE ~p SPECIAL ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
     %Terminating the consumer
     ok = terminate_consumer(State),
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
@@ -319,7 +327,7 @@ handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =
 handle_cast({create, Src, Rand},State) when State#role_data.spec#spec.role =:= Src->
     {noreply, State};
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
-    lager:info("[~p][~p] NOT ~p ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
+    %lager:info("[~p][~p] NOT ~p ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
 
     %lager:info("[~p] Create cast received from ~p",[self(), Src]),
     %lager:info("[~p] Not ~p",[self(), State]),
@@ -472,7 +480,15 @@ handle_cast({crash},State)->
     {stop, abnormal, State};
 handle_cast({stop},State)->
     {stop, normal, State};
-handle_cast(Request, State) ->
+handle_cast({update_id}, State)->
+
+    P = db_utils:ets_lookup_entry(State#role_data.id),
+
+    NSpec = data_utils:spec_update(imp_ref , State#role_data.spec, P#child_entry.client),
+    NState = data_utils:role_data_update(spec, State,NSpec),
+    
+    {noreply, NState}.
+handle_cast(Request, _From, State) ->
     lager:warning("[~p] Unkwon cast ~p with state: ~p",[self(), Request, State]),
     {noreply, State}.
 
@@ -493,9 +509,19 @@ handle_info({'DOWN',_MonRef,process,Pid,noconnection}, State) when Pid =:= State
 handle_info({'DOWN',_MonRef,process,Pid,normal}, State) when Pid =:= State#role_data.spec#spec.imp_ref ->
     %lager:info("DOwn STOPING FOR normal halt"),
     {stop, normal, State};
-handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) ->
+handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= conver ->
+    {noreply, State, ?RECOVER_TIMEOUT};
+handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= waiting ->
+
+    ok = terminate_consumer(State),
+
+    P = db_utils:ets_lookup_entry(State#role_data.id),
+    NP = P#child_entry{client = none},
+
+    db_utils:ets_insert(child, NP),
+
     lager:info("Process ~p down reason: ~p ~p",[Pid, State#role_data.spec#spec.imp_ref, Reason]),
-    {noreply, State};
+    {noreply, State, ?RECOVER_TIMEOUT};
 handle_info({'EXIT', Pid, Reason} , State) ->
     lager:info("Exit in Role received ~p ~p ",[Pid, Reason]),
     {noreply, State};
@@ -503,8 +529,8 @@ handle_info({nodedown, Node}, State) ->
     lager:info("NOdedown received ~p",[Node]),
     {noreply, State};
 handle_info(timeout, State) ->
-    lager:info("Timeout received"),
-    {noreply, State};
+    lager:info("From recovery"),
+    {stop, normal, State};
 handle_info(Msg, State) ->
     lager:info("Msg received ~p",[Msg]),
     {noreply, State}.
@@ -521,8 +547,6 @@ handle_info(Msg, State) ->
 %% ====================================================================
 terminate(normal, State) ->
     lager:info("[~p] Terminating role normally",[self()]),
-
-    db_utils:ets_remove_child_entry(State#role_data.id),
 
     ok = terminate_consumer(State),
 
