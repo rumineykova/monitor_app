@@ -54,10 +54,10 @@ config_protocol(Protocol) ->
 %% ====================================================================
 %% @doc
 %% @end
-request_id(Process, Protocol, Role) ->
-    gen_server:call(Process, {request_id, Protocol, Role}).
-request_id(Protocol, Role) ->
-    gen_server:call({global, monscr}, {request_id, Protocol, Role}).
+request_id(Process, Id) ->
+    gen_server:call(Process, {request_id, Id}).
+request_id(Id) ->
+    gen_server:call({global, monscr}, {request_id, Id}).
 
 
 %% stop/1
