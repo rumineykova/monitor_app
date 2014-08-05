@@ -209,7 +209,7 @@ handle_cast(Msg, State) ->
     Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info({'DOWN',_MonRef,process,Pid,normal}, State) ->
-    lager:info("Process Down normal"),
+    lager:info("Process Down normal removing it from list"),
     Rp = db_utils:ets_worker_pattern_match(Pid),
     db_utils:ets_remove_child_entry(Rp#child_entry.id),
 

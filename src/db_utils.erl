@@ -36,39 +36,14 @@ install(Nodes, Path)->
 
 
 get_table(TableName)->
-    %lager:error("Creating table: ~p", [TableName]),
-    %When create gets emptied
-    %lager:info("mnesia get table"),
-    mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
+    case mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
             {record_name,row},
-            {ram_copies, [node()]}
-        ]),
-
-    %lager:info("wait for table"),
-    mnesia:wait_for_tables([TableName], infinity), {created, TableName}.
-%TODO: recover without filling
-%case exist_table(TableName, mnesia:system_info(tables)) of
-%  {false} ->    lager:info("[~p][get_table] Mnesia started",[?MODULE]),
-%              mnesia:create_table(TableName, [{attributes, record_info(fields, row)},
-%                                              {record_name,row},
-%                                              {ram_copies, [node()]}
-%                                             ]),
-%              mnesia:wait_for_tables([TableName], infinity),
-%              {created, TableName};
-%  {true} -> lager:info("[~p][get_table] [MN] table already exits ~p",[self(), TableName]),
-%            {exists, TableName};
-%  Reason -> lager:error("[~p][get_table] Unkown success => ~p",[self(), Reason]),
-%            {error, Reason}
-%end.
-
-%exist_table(_Tbl,[])->
-%  {false};
-%exist_table(Tbl,[T|R])->
-%  case T of
-%    T when Tbl =:= T -> {true};
-%    _ -> exist_table(Tbl,R)
-%   end.
-
+            {ram_copies, [node()]} ]) of
+        {atomic, ok} -> {created, TableName};
+        {aborted,{already_exists,Table_name}} -> {exists, Table_name};
+        {error, {already_exists, Table_name}} -> {exists, Table_name};
+        {error, Reason} -> lager:info("~p", Reason), {error, Reason}
+    end.
 
 
 %% add_row/3
@@ -125,14 +100,6 @@ ets_create(Name, Options) ->
     end.
 
 
-
-%ets_remove_child_entry(Pid) when is_pid(Pid)->
-%    P = #child_entry{id = '_', data = '_', worker ='_', client = Pid},
-%    %lager:info("~p",[P]),
-%    Ent = ets:match_object(child, P),
-%    lager:info("~p",[Ent]),
-%    lists:foreach(fun(E) ->  ets:delete(child, E#child_entry.id) end,Ent);
-%    %true = ets:delete(child,Ent#child_entry.id);
 ets_remove_child_entry(Key) ->
     true = ets:delete(child, Key).
 
@@ -191,9 +158,6 @@ ets_print_table(TbName, Cur, Total) when Cur =:= Total->
 ets_print_table(TbName, Cur, Total) ->
     lager:info("~p",[ets:lookup(TbName, Cur)]),
     ets_print_table(TbName, Cur +1, Total).
-
-
-
 
 
 
