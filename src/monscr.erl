@@ -24,7 +24,7 @@
 %% Public API
 -export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/1, request_id/2, update_id/2, update_id/3]).
 %% Testing purposses
--export([stop/1, recovered/1]).
+-export([stop/1, recovered/1, the_timer/3]).
 
 %% ====================================================================
 %% API functions
@@ -175,7 +175,7 @@ handle_cast({config,{Id,_ } = Config } , State) ->
     %% Colling the actual implementation of the configuration
     lager:info("configureing protocols"),
     {ok, Reply} = config_protocol_imp(Config, State),
-    lager:info("protocols configured with reply ~p",[Reply]),
+    %lager:info("protocols configured with reply ~p",[Reply]),
     %% performing a callback to config_done in the client
     Pid = db_utils:ets_lookup_client_pid(Id),
     gen_monrcp:send(Pid, {callback, config_done, Reply}),

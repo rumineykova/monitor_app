@@ -116,21 +116,39 @@ zero_init(Path, State) ->
     Role = State#role_data.spec#spec.role,
 
     %This method will load and in case of not having the file requestes it from the source
-    {NumLines, RSt} = case  manage_projection_file(Path, State) of
-        timeout -> {0,{error, no_projection_found}};
+<<<<<<< HEAD
+    case  manage_projection_file(Path, State) of
+        timeout -> St = {error, no_projection_found};
         Scr ->
-            {ok, NL} = case db_utils:get_table(Role) of
+            {ok, NumLines} = case db_utils:get_table(Role) of
                 {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
                 {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
                 P -> lager:info("~p",[P]),P
             end,
-            
+||||||| merged common ancestors
+    Scr = manage_projection_file(Path, State),
+
+    {ok, NumLines} = case db_utils:get_table(Role) of
+        {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
+        {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
+        P -> lager:info("~p",[P]),P
+    end,
+=======
+    Scr = manage_projection_file(Path, State),
+
+    {ok, NumLines} = case db_utils:get_table(Role) of
+        {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
+        {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
+        P -> lager:info("~p",[P]),P
+    end,
+>>>>>>> 429c9ab158bdd5b6f0586e139f655d54ce6d3c50
+
             St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
                 State#role_data.spec#spec.imp_ref,
                 Role,
-                State#role_data.spec#spec.funcs),
-            {NL,St}
-    end,
+                State#role_data.spec#spec.funcs)
+
+    end, 
 
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
@@ -151,7 +169,7 @@ zero_init(Path, State) ->
 
     Exc = data_utils:exc_create(waiting, 0, undef),
    
-    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, RSt},{exc, Exc}]),
+    NArgs = data_utils:role_data_update_mult(State, [{conn, Conn},{spec,NSpec},{state, St},{exc, Exc}]),
 
     erlang:monitor(process, State#role_data.spec#spec.imp_ref),
     {ok, NArgs}.
@@ -717,8 +735,16 @@ manage_projection_file(Path, State)->
             {ok,Scr} = scribble:parse(Final),
             Scr;
 
+<<<<<<< HEAD
         {error, Reason} ->
             lager:error("EROR MANAGE PROJECTION FILE: ~p",[Reason]),
+||||||| merged common ancestors
+        {error, _Reason} ->
+
+=======
+        {error, Reason} ->
+            lager:error(" Error file reafile ~p",[Reason]),
+>>>>>>> 429c9ab158bdd5b6f0586e139f655d54ce6d3c50
             {Host, Port} = case application:get_env(kernel, download_port) of
                 undefined -> {?DHOST, ?PORT};
                 {ok, {H,P}} -> {H,P}
