@@ -116,19 +116,21 @@ zero_init(Path, State) ->
     Role = State#role_data.spec#spec.role,
 
     %This method will load and in case of not having the file requestes it from the source
-    Scr = manage_projection_file(Path, State),
+    case  manage_projection_file(Path, State) of
+        timeout -> St = {error, no_projection_found};
+        Scr ->
+            {ok, NumLines} = case db_utils:get_table(Role) of
+                {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
+                {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
+                P -> lager:info("~p",[P]),P
+            end,
 
-    {ok, NumLines} = case db_utils:get_table(Role) of
-        {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
-        {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
-        P -> lager:info("~p",[P]),P
-    end,
+            St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
+                State#role_data.spec#spec.imp_ref,
+                Role,
+                State#role_data.spec#spec.funcs)
 
-    St = check_signatures_and_methods(State#role_data.spec#spec.protocol,
-        State#role_data.spec#spec.imp_ref,
-        Role,
-        State#role_data.spec#spec.funcs),
-
+    end, 
 
     {Connection, Channel} = case application:get_env(kernel, rbbt_config) of
         undefined ->   Con  = rbbt_utils:connect(?HOST, ?USER, ?PWD ),
@@ -709,8 +711,8 @@ manage_projection_file(Path, State)->
             {ok,Scr} = scribble:parse(Final),
             Scr;
 
-        {error, _Reason} ->
-
+        {error, Reason} ->
+            lager:error("EROR MANAGE PROJECTION FILE: ~p",[Reason]),
             {Host, Port} = case application:get_env(kernel, download_port) of
                 undefined -> {?DHOST, ?PORT};
                 {ok, {H,P}} -> {H,P}
@@ -746,14 +748,16 @@ request_file_source(ImpRef, FileName, Host, Port) ->
 
 
 download_projection_from_source(Socket, Path, Filename) ->
-    Bs = file_receiver_loop(Socket, <<"">>),
-    save_file(Path, Filename,Bs).
+    case file_receiver_loop(Socket, <<"">>) of
+        timeout -> timeout;
+        Bs -> save_file(Path, Filename,Bs)
+    end.
 
 file_receiver_loop(Socket,Bs)->
-    %lager:info("insie"),
-    case gen_tcp:recv(Socket, 0) of
+    case gen_tcp:recv(Socket, 0, 5000) of
         {ok, B} -> file_receiver_loop(Socket,[Bs, B]);
         {error, closed} -> gen_tcp:close(Socket), Bs;
+        {error, timeout} -> timeout;
         M -> lager:info("Error uknown ~p",[M])
     end.
 
