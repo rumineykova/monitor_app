@@ -15,14 +15,14 @@
 %% ====================================================================
 
 -export([start_link/2, send/4, 'end'/2, create/2, cancel/2,  stop/1, get_init_state/1,update_impref/1]).
-
+-export([the_timer/2]).
 -compile(export_all).
 
 
 %TODO: this has to be in a config file
 -define(USER,  <<"test">>).
 -define(PWD,  <<"test">>).
--define(HOST,  "94.23.60.219").
+-define(HOST,  "146.169.45.87").
 -define(DHOST, "localhost").
 -define(PORT, 65005).
 
@@ -119,8 +119,8 @@ zero_init(Path, State) ->
     Scr = manage_projection_file(Path, State),
 
     {ok, NumLines} = case db_utils:get_table(Role) of
-        {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
-        {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
+        {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
+        {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
         P -> lager:info("~p",[P]),P
     end,
 
@@ -513,15 +513,19 @@ handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc
     {noreply, State, ?RECOVER_TIMEOUT};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= waiting ->
 
-    ok = terminate_consumer(State),
+    NState = case terminate_consumer(State) of
+        ok -> Conn = data_utils:conn_update(active_cns, State#role_data.conn, none),
+               data_utils:role_data_update(conn, State, Conn);
+        _ -> lager:error("error termianteing consumer")
+    end,
 
-    P = db_utils:ets_lookup_entry(State#role_data.id),
+    P = db_utils:ets_lookup_entry(NState#role_data.id),
     NP = P#child_entry{client = none},
 
     db_utils:ets_insert(child, NP),
 
-    lager:info("Process ~p down reason: ~p ~p",[Pid, State#role_data.spec#spec.imp_ref, Reason]),
-    {noreply, State, ?RECOVER_TIMEOUT};
+    lager:info("Process ~p down reason: ~p ~p",[Pid, NState#role_data.spec#spec.imp_ref, Reason]),
+    {noreply, NState, ?RECOVER_TIMEOUT};
 handle_info({'EXIT', Pid, Reason} , State) ->
     lager:info("Exit in Role received ~p ~p ",[Pid, Reason]),
     {noreply, State};
@@ -576,15 +580,18 @@ terminate(Reason, State) ->
     ok.
 
 
+terminate_consumer(State) when State#role_data.conn#conn.active_cns =:= none ->
+    ok;
 terminate_consumer(State)->
 
     Pid = State#role_data.conn#conn.active_cns,
     %role_consumer:stop(State#role_data.conn#conn.active_cns),
     unlink(Pid),
     Ref = monitor(process, Pid),
+    lager:info("terminating consumer"),
     role_consumer:stop(Pid),
     receive
-        {'DOWN', Ref, process, Pid, _Reason} ->
+        {'DOWN', Ref, process, Pid, _Reason} -> 
             ok
     after 1000 ->
             error(exit_timeout)
@@ -615,8 +622,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 check_signatures_and_methods(Protocol, Ref, TableName, CallBackList) ->
     case check_signatures(TableName, CallBackList) of
-        {ok} ->  lager:info("[~p] Signature checking done",[self()]),
-            %be carefull dont put anything after check_method it modifies the return!!
+        {ok} -> %be carefull dont put anything after check_method it modifies the return!!
             check_method(Protocol, Ref, CallBackList);
         M -> M
     end.
@@ -709,8 +715,8 @@ manage_projection_file(Path, State)->
             {ok,Scr} = scribble:parse(Final),
             Scr;
 
-        {error, _Reason} ->
-
+        {error, Reason} ->
+            lager:error(" Error file reafile ~p",[Reason]),
             {Host, Port} = case application:get_env(kernel, download_port) of
                 undefined -> {?DHOST, ?PORT};
                 {ok, {H,P}} -> {H,P}
