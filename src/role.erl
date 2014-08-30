@@ -250,7 +250,7 @@ handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =
     Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ Rand),
 
     %% NEW Exchange for the specific comunication
-    rbbt_utils:declare_exc(State#role_data.conn#conn.active_chn, Prot, <<"direct">>, true),
+    rbbt_utils:declare_exc(State#role_data.conn#conn.active_chn, Prot, <<"direct">>, false),
 
     % Publish create message to all participiant  === JOIN CONVERSATION
     rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
@@ -486,11 +486,16 @@ handle_cast({update_id}, State)->
 
     P = db_utils:ets_lookup_entry(State#role_data.id),
 
+    Cons = role_consumer:start_link({State#role_data.conn#conn.active_chn, State#role_data.conn#conn.active_q, self()}),
+
+    NConn = data_utils:conn_update(active_cns, State#role_data.conn, Cons),
     NSpec = data_utils:spec_update(imp_ref , State#role_data.spec, P#child_entry.client),
-    NState = data_utils:role_data_update(spec, State,NSpec),
     
-    {noreply, NState}.
-handle_cast(Request, _From, State) ->
+    NState = data_utils:role_data_update_mult(State, [{conn, NConn},{spec,NSpec}]),
+
+
+    {noreply, NState};
+handle_cast(Request, State) ->
     lager:warning("[~p] Unkwon cast ~p with state: ~p",[self(), Request, State]),
     {noreply, State}.
 
@@ -512,6 +517,14 @@ handle_info({'DOWN',_MonRef,process,Pid,normal}, State) when Pid =:= State#role_
     %lager:info("DOwn STOPING FOR normal halt"),
     {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= conver ->
+	
+	NState = case terminate_consumer(State) of
+        ok -> Conn = data_utils:conn_update(active_cns, State#role_data.conn, none),
+               data_utils:role_data_update(conn, State, Conn);
+        _ -> lager:error("error termianteing consumer")
+    end,
+
+	lager:info("down conversation ~p", [Pid]),
     {noreply, State, ?RECOVER_TIMEOUT};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= waiting ->
 

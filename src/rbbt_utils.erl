@@ -34,7 +34,7 @@ declare_q(Chn,Name) when is_atom(Name) ->
   declare_q(Chn, atom_to_binary(Name, utf8));
 declare_q(Chn, Name) when is_binary(Name)->
   #'queue.declare_ok'{queue = Q}
-    = amqp_channel:call(Chn, #'queue.declare'{queue=Name, auto_delete=true}),
+    = amqp_channel:call(Chn, #'queue.declare'{queue=Name, auto_delete=false}),
   Q.
 
 
@@ -89,7 +89,7 @@ bind_to_global_exchange(Protocol,Channel,Queue_name) when is_binary(Protocol), i
   #'exchange.declare_ok'{} = amqp_channel:call(Channel, EDeclare),
 
   #'queue.declare_ok'{queue = Q}
-    = amqp_channel:call(Channel, #'queue.declare'{queue=Queue_name,auto_delete=true}),
+    = amqp_channel:call(Channel, #'queue.declare'{queue=Queue_name,auto_delete=false}),
   Binding = #'queue.bind'{queue       = Q,
     exchange    = Protocol},
 

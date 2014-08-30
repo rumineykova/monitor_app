@@ -22,7 +22,7 @@
 %% Gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 %% Public API
--export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/1, request_id/2, update_id/2, update_id/3]).
+-export([start_link/0,start_link/1, register/1, register/2, config_protocol/1, config_protocol/2, request_id/1, request_id/2, update_id/2, update_id/3,request_roles/1,request_roles/2]).
 %% Testing purposses
 -export([stop/1, recovered/1, the_timer/3]).
 
@@ -59,11 +59,15 @@ request_id(Process, Id) ->
 request_id(Id) ->
     gen_server:call({global, monscr}, {request_id, Id}).
 
+request_roles(Process, Id) ->
+    gen_server:call(Process, {request_roles, Id}).
+request_roles(Id) ->
+    gen_server:call({global, monscr}, {request_roles, Id}).
 
 update_id(Process, Id, NewP)->
     gen_server:call(Process, {update_id,  Id, NewP}).
 update_id(Id, NewP)->
-    gen_server:call({global, monscr},{updated_id, Id, NewP}).
+    gen_server:call({global, monscr},{update_id, Id, NewP}).
 
 recovered(Id) ->
     gen_server:cast({global, mosncr}, {recovered, Id}).
@@ -150,12 +154,18 @@ handle_call({register,Pid},_From,State) ->
     %monitor(process,Pid),
     %lager:info("[MONSCR] [REGISTER] reply: ~p",[Reply]),
     {reply,Reply,State};
+handle_call({request_roles, Id}, _From, State)->
+    List = generate_list(Id),
+    {reply, List, State };
 handle_call({request_id, Id}, _From, State) ->
     {reply, db_utils:ets_lookup_child_pid(Id), State};
 handle_call({update_id, Id, NewPid}, _From, State) ->
-    List = db_utils:ets_key_pattern_match(Id),
-    lists:foreach(fun(E)-> Ne = E#child_entry{ client = NewPid}, db_utils:ets_insert(child, Ne), role:update_impref(E#child_entry.worker) end,List),
-    {reply, ok, State};
+    Reply = case db_utils:ets_key_pattern_match(Id) of
+        [] -> could_not_update_doesnt_exsit;
+        List -> lists:foreach(fun(E)-> Ne = E#child_entry{ client = NewPid}, db_utils:ets_insert(child, Ne), role:update_impref(E#child_entry.worker) end,List),
+                ok
+    end,
+    {reply, Reply, State};
 handle_call(_Request,_From,State)->
     {reply,{error,bad_args},State}.
 
@@ -181,13 +191,15 @@ handle_cast({config,{Id,_ } = Config } , State) ->
     gen_monrcp:send(Pid, {callback, config_done, Reply}),
     {noreply, State};
 handle_cast({recovered, Id}, State)->
-    
+    lager:info("recovered"),
     {Id, Timer} = ets:lookup(timers, Id),
 
     Timer ! kill,
 
     gen_monrcp:send(db_utils:ets_lookup_client_pid(Id), {callback, error, {worker_restarted , db_utils:ets_lookup_child_pid(Id)}}),
 
+    {noreply, State};
+handle_cast({recovery_timeout, Id}, State) ->
     {noreply, State};
 handle_cast({stop},State) ->
     %% method to stop the monscr ||| Testing purposes not suppose to be use!
