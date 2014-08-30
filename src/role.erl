@@ -850,15 +850,37 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
     Result :: {error} | term(),
     Pc :: {term(), atom(), atom(), term()}.
 %% ====================================================================
+match_directive(Record,Flag,Pc,Num,MaxN,Tbl, {par, List}) -> 
+	lists:foldl(fun({In, Line}, ) -> 
+				case match_directive((Record,Flag, Pc,Num,MaxN,Tbl) of
+					{error} -> {In + 1, 0};
+					{ok, Num) -> {In, Num}
+				end end, {1,0}, List),
+	{par, List};
+
 match_directive(Record,Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl) ->
     case Record of
         {from,Lbl,Src} when Flag =:= from, Lbl =:= Sig, Src =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl);  
         {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl);
-        {choice,_name,Lines} -> Npath = find_path(Lines,Pc,Flag,MaxN,Tbl), case_continue(Pc,Npath,MaxN,Tbl);
+        {choice,_name,Lines} -> Npath = find_choice_path(Lines,Pc,Flag,MaxN,Tbl), case_continue(Pc,Npath,MaxN,Tbl);
         {continue,NNum} -> case_continue(Pc,NNum,MaxN,Tbl);
+        {par,Lines} -> match_directive(Record,Flag, Pc,Num,MaxN,Tbl,{par, Lines});
         T -> lager:error("[~p] MISSMATCH Revise your code!!!! ~p, ~p, ~p, ~p",[self(),T, Record, Sig, Ordest]),{error}
     end.
 
+
+find_choice_path(List,_Pc,_Flag,_MaxN,_Tbl) ->
+	find_choice_path(List, Index, Pc,_Flag,_MaxN,_Tbl).
+
+find_choice_path(List, Index,_Pc,_Flag,_MaxN,_Tbl) when Index =:= MaxN->
+    {error};
+find_choice_path(List, Index, Pc,Flag,MaxN,Tbl) ->
+	L = lists:nth(List, Index),
+    Record =  db_utils:get_row(Tbl, Line),
+    case match_directive(Record,Flag,Pc,Line,MaxN,Tbl) of
+        {ok, N} -> N;
+        {error} -> find_path(R,Pc,Flag,MaxN,Tbl)
+    end.
 
 
 %% case_continue/4
@@ -883,9 +905,9 @@ case_continue(_Pc,Num,MaxN,_Tbl) when Num >= MaxN ->
 -spec find_path(Or :: list(), Pc :: term(), Flag :: term(), MaxN :: integer(), Tbl :: term()) -> Result  when
     Result :: term() | {error}.
 %% ====================================================================
-find_path([],_Pc,_Flag,_MaxN,_Tbl) ->
+find_choice_path([],_Pc,_Flag,_MaxN,_Tbl) ->
     {error};
-find_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
+find_choice_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
     Record =  db_utils:get_row(Tbl, Line),
     case match_directive(Record,Flag,Pc,Line,MaxN,Tbl) of
         {ok, N} -> N;
