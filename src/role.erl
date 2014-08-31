@@ -867,19 +867,19 @@ match_directive(Flag,Pc,Num,MaxN,Tbl, {par, List, End} = Par) ->
     lager:info("in par case ~p",[Par]),
 	Result = lists:foldl(
         fun
+            (_, {ok, _} = REP) ->
+                REP;
             ( {K, -1}, L) when is_list(L) ->
                 case match_directive(Flag, Pc,End,MaxN,Tbl,none) of
                                 {error} -> L;
-                                {ok, Num} = EndPar -> EndPar
+                                EndPar -> EndPar
                             end;   
             ( {K,Line} ,L) when is_list(L) -> 
                     lager:info("Line search ~p",[Line]),
                     case match_directive(Flag, Pc,Line,MaxN,Tbl, none) of
 					   {error} -> L;
 					   {ok, RNum} -> lager:info("ok match ~p",[RNum]), lists:keyreplace(K, 1, L, {K, RNum})                          
-				    end;
-            (_, {ok, _} = REP) ->
-                REP
+				    end
             end, List, List),
 
     case Result of
