@@ -1,0 +1,32 @@
+module test;
+
+local protocol looppingpong at p1( 
+	role s1, role s2
+	)
+{
+
+rec checkPoint{
+		response_item(string) from sebay;
+		choice at client{
+			makebid() to sebay;
+			send_newPrice(int) to sebay;
+			choice at sebay{
+				lower() from sebay;
+				continue checkPoint;
+			}or{
+				accept() from sebay;
+				send_update(string) from sebay;
+			}
+		}or{
+			nobid() to sebay;
+}}
+    par{
+        ping(string) to s2;
+	
+    }and{
+   		pong(string) from s2;
+    }
+
+
+
+}    

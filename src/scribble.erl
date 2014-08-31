@@ -185,7 +185,7 @@ yecctoken2string(Other) ->
 
 
 
--file("scribble.erl", 188).
+-file("src/parser/scribble.erl", 188).
 
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
@@ -1049,7 +1049,7 @@ yeccgoto_to_send(51=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_44(_S, Cat, Ss, Stack, T, Ts, Tzr).
 
 -compile({inline,yeccpars2_5_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_5_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1057,7 +1057,7 @@ yeccpars2_5_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_8_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_8_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1065,7 +1065,7 @@ yeccpars2_8_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_9_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_9_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1073,7 +1073,7 @@ yeccpars2_9_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_10_/1}).
--file("scribble.yrl", 33).
+-file("src/parser/scribble.yrl", 33).
 yeccpars2_10_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1081,7 +1081,7 @@ yeccpars2_10_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_12_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_12_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1089,7 +1089,7 @@ yeccpars2_12_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_15_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_15_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1097,7 +1097,7 @@ yeccpars2_15_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_28_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_28_(__Stack0) ->
  [__10,__9,__8,__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1105,7 +1105,7 @@ yeccpars2_28_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_37_/1}).
--file("scribble.yrl", 61).
+-file("src/parser/scribble.yrl", 61).
 yeccpars2_37_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1113,7 +1113,7 @@ yeccpars2_37_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_39_/1}).
--file("scribble.yrl", 60).
+-file("src/parser/scribble.yrl", 60).
 yeccpars2_39_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1121,7 +1121,7 @@ yeccpars2_39_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_41_/1}).
--file("scribble.yrl", 57).
+-file("src/parser/scribble.yrl", 57).
 yeccpars2_41_(__Stack0) ->
  [__9,__8,__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1129,7 +1129,7 @@ yeccpars2_41_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_44_/1}).
--file("scribble.yrl", 71).
+-file("src/parser/scribble.yrl", 71).
 yeccpars2_44_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1137,7 +1137,7 @@ yeccpars2_44_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_45_/1}).
--file("scribble.yrl", 72).
+-file("src/parser/scribble.yrl", 72).
 yeccpars2_45_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1145,7 +1145,7 @@ yeccpars2_45_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_48_/1}).
--file("scribble.yrl", 75).
+-file("src/parser/scribble.yrl", 75).
 yeccpars2_48_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1153,15 +1153,15 @@ yeccpars2_48_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_49_/1}).
--file("scribble.yrl", 74).
+-file("src/parser/scribble.yrl", 74).
 yeccpars2_49_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
-   [ __1 ]
+   [ __1 , [ { prec , none } ] ]
   end | __Stack].
 
 -compile({inline,yeccpars2_52_/1}).
--file("scribble.yrl", 76).
+-file("src/parser/scribble.yrl", 76).
 yeccpars2_52_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1169,7 +1169,7 @@ yeccpars2_52_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_53_/1}).
--file("scribble.yrl", 73).
+-file("src/parser/scribble.yrl", 73).
 yeccpars2_53_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -1177,7 +1177,7 @@ yeccpars2_53_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_60_/1}).
--file("scribble.yrl", 102).
+-file("src/parser/scribble.yrl", 102).
 yeccpars2_60_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1185,39 +1185,39 @@ yeccpars2_60_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_61_/1}).
--file("scribble.yrl", 97).
+-file("src/parser/scribble.yrl", 97).
 yeccpars2_61_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
-   { par , [ __2 ] }
+   { par , [ __2 , [ { endpar , none } ] ] }
   end | __Stack].
 
 -compile({inline,yeccpars2_62_/1}).
--file("scribble.yrl", 96).
+-file("src/parser/scribble.yrl", 96).
 yeccpars2_62_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   { par , [ __2 , __3 ] }
+   { par , [ __2 ++ [ { endpar , none } ] , __3 ] }
   end | __Stack].
 
 -compile({inline,yeccpars2_64_/1}).
--file("scribble.yrl", 99).
+-file("src/parser/scribble.yrl", 99).
 yeccpars2_64_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
-   [ { 'and' , __2 } ]
+   [ { 'and' , __2 ++ [ { endpar , none } ] } ]
   end | __Stack].
 
 -compile({inline,yeccpars2_65_/1}).
--file("scribble.yrl", 98).
+-file("src/parser/scribble.yrl", 98).
 yeccpars2_65_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   [ { 'and' , __2 } ] ++ __3
+   [ { 'and' , __2 ++ [ { endpar , none } ] } ] ++ __3
   end | __Stack].
 
 -compile({inline,yeccpars2_67_/1}).
--file("scribble.yrl", 104).
+-file("src/parser/scribble.yrl", 104).
 yeccpars2_67_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1225,7 +1225,7 @@ yeccpars2_67_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_70_/1}).
--file("scribble.yrl", 91).
+-file("src/parser/scribble.yrl", 91).
 yeccpars2_70_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1233,7 +1233,7 @@ yeccpars2_70_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_71_/1}).
--file("scribble.yrl", 90).
+-file("src/parser/scribble.yrl", 90).
 yeccpars2_71_(__Stack0) ->
  [__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1241,7 +1241,7 @@ yeccpars2_71_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_73_/1}).
--file("scribble.yrl", 93).
+-file("src/parser/scribble.yrl", 93).
 yeccpars2_73_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1249,7 +1249,7 @@ yeccpars2_73_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_74_/1}).
--file("scribble.yrl", 92).
+-file("src/parser/scribble.yrl", 92).
 yeccpars2_74_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1257,7 +1257,7 @@ yeccpars2_74_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_75_/1}).
--file("scribble.yrl", 69).
+-file("src/parser/scribble.yrl", 69).
 yeccpars2_75_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1265,7 +1265,7 @@ yeccpars2_75_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_76_/1}).
--file("scribble.yrl", 66).
+-file("src/parser/scribble.yrl", 66).
 yeccpars2_76_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1273,7 +1273,7 @@ yeccpars2_76_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_79_/1}).
--file("scribble.yrl", 84).
+-file("src/parser/scribble.yrl", 84).
 yeccpars2_79_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1281,7 +1281,7 @@ yeccpars2_79_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_81_/1}).
--file("scribble.yrl", 85).
+-file("src/parser/scribble.yrl", 85).
 yeccpars2_81_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1289,7 +1289,7 @@ yeccpars2_81_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_85_/1}).
--file("scribble.yrl", 79).
+-file("src/parser/scribble.yrl", 79).
 yeccpars2_85_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1297,7 +1297,7 @@ yeccpars2_85_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_87_/1}).
--file("scribble.yrl", 80).
+-file("src/parser/scribble.yrl", 80).
 yeccpars2_87_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1305,7 +1305,7 @@ yeccpars2_87_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_89_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_89_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1313,7 +1313,7 @@ yeccpars2_89_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_93_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_93_(__Stack0) ->
  [__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1321,7 +1321,7 @@ yeccpars2_93_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_96_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_96_(__Stack0) ->
  [__7,__6,__5,__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1329,7 +1329,7 @@ yeccpars2_96_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_97_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_97_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1337,7 +1337,7 @@ yeccpars2_97_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_98_/1}).
--file("scribble.yrl", 34).
+-file("src/parser/scribble.yrl", 34).
 yeccpars2_98_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1345,7 +1345,7 @@ yeccpars2_98_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_100_/1}).
--file("scribble.yrl", 36).
+-file("src/parser/scribble.yrl", 36).
 yeccpars2_100_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1353,7 +1353,7 @@ yeccpars2_100_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_101_/1}).
--file("scribble.yrl", 0).
+-file("src/parser/scribble.yrl", 0).
 yeccpars2_101_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -1361,7 +1361,7 @@ yeccpars2_101_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_102_/1}).
--file("scribble.yrl", 35).
+-file("src/parser/scribble.yrl", 35).
 yeccpars2_102_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin

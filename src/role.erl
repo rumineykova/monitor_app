@@ -392,13 +392,13 @@ handle_cast({ready},State) ->
     {noreply, data_utils:role_data_update(exc, State, Exc)};
 handle_cast({send,Dest,Sig,Cont} = Pc, State) when State#role_data.exc#exc.state =:= conver ->
 
-    Record = db_utils:get_row(State#role_data.spec#spec.role, State#role_data.exc#exc.count),
-
-    Exc = case match_directive(Record,
+    Exc = case match_directive(
             to,
             Pc,
             State#role_data.exc#exc.count,
-            State#role_data.spec#spec.lines, State#role_data.spec#spec.role) of
+            State#role_data.spec#spec.lines, 
+            State#role_data.spec#spec.role,
+            State#role_data.exc#exc.par) of
 
         {ok, Num} ->  %If the messgae to be send is correct according to the protocol it is publish
             rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
@@ -407,7 +407,16 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State) when State#role_data.exc#exc.state
                 {msg, State#role_data.spec#spec.role, Sig, Cont}
             ),
 
-            State#role_data.exc#exc{ count = Num};
+            State#role_data.exc#exc{ count = Num, par = none};
+
+        {par, List, End} ->
+            rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
+                State#role_data.conn#conn.active_exc,
+                Dest,
+                {msg, State#role_data.spec#spec.role, Sig, Cont}
+            ),
+            State#role_data.exc#exc{ par = {par,List, End}};
+
         {error} -> lager:info("[~p] error detected aborting comunication!",[self()]),
             cancel_protocol(State),
             State#role_data.exc
@@ -421,19 +430,23 @@ handle_cast({send,_Dest,_Sig,_Cont}, State) ->
     {noreply, State};
 handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) when State#role_data.exc#exc.state =:= conver ->
 
-    Record = db_utils:get_row(State#role_data.spec#spec.role, State#role_data.exc#exc.count),
 
-    Exc = case match_directive(Record,
+    Exc = case match_directive(
             from,
             Pc,
             State#role_data.exc#exc.count,
             State#role_data.spec#spec.lines,
-            State#role_data.spec#spec.role) of
+            State#role_data.spec#spec.role,
+            State#role_data.exc#exc.par) of
 
         {ok, Num} ->  {func,_s,Fimp} = lists:keyfind(Sig, 2, State#role_data.spec#spec.funcs),
 
             gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback,Fimp,{msg,Cont}}),
-            State#role_data.exc#exc{ count = Num };
+            State#role_data.exc#exc{ count = Num, par = none};
+        {par, List, End} ->  {func,_s,Fimp} = lists:keyfind(Sig, 2, State#role_data.spec#spec.funcs),
+
+            gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback,Fimp,{msg,Cont}}),
+            State#role_data.exc#exc{ par = {par, List, End}, count = End };
         {error} ->  lager:info("[~p] error detected aborting comunication!",[self()]),
             cancel_protocol(State),
             State#role_data.exc
@@ -846,72 +859,77 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
 %% match_directive/2
 %% ====================================================================
 %% @doc
--spec match_directive(Record :: term(), Flag :: atom(), Pc, Num :: integer(), MaxN :: integer(), Tbl :: atom()) -> Result when
+-spec match_directive(Flag :: atom(), Pc, Num :: integer(), MaxN :: integer(), Tbl :: atom(), Par :: term()) -> Result when
     Result :: {error} | term(),
     Pc :: {term(), atom(), atom(), term()}.
 %% ====================================================================
-match_directive(Record,Flag,Pc,Num,MaxN,Tbl, {par, List}) -> 
-	lists:foldl(fun({In, Line}, ) -> 
-				case match_directive((Record,Flag, Pc,Num,MaxN,Tbl) of
-					{error} -> {In + 1, 0};
-					{ok, Num) -> {In, Num}
-				end end, {1,0}, List),
-	{par, List};
+match_directive(Flag,Pc,Num,MaxN,Tbl, {par, List, End} = Par) -> 
 
-match_directive(Record,Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl) ->
+	Result = lists:foldl(
+        fun
+            ( {K,Line} ,L) when is_list(L) -> 
+                    case match_directive(Flag, Pc,Num,MaxN,Tbl, Par) of
+					   {error} -> L;
+					   {ok, Num} -> lists:keyreplace(K, 1, L, {K, Num});
+                        {endpar} -> 
+                            case match_directive(Flag, Pc,Num,MaxN,Tbl,none) of
+                                {error} -> lists:keyreplace(K,1, L, {K, -1});
+                                {ok, Num} = EndPar -> EndPar
+                            end
+				    end;
+            (_, {ok, _} = REP) ->
+                REP
+            end, List, List),
+
+    case Result of
+        Rt when Rt == List -> {error};
+        Rr when is_list(Result) -> {par, Result, End};
+        {ok, Nm} -> {ok, Nm}
+    end;
+
+match_directive(Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl, none) ->
+    Record = db_utils:get_row(Tbl, Num),
+
     case Record of
-        {from,Lbl,Src} when Flag =:= from, Lbl =:= Sig, Src =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl);  
-        {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl);
-        {choice,_name,Lines} -> Npath = find_choice_path(Lines,Pc,Flag,MaxN,Tbl), case_continue(Pc,Npath,MaxN,Tbl);
-        {continue,NNum} -> case_continue(Pc,NNum,MaxN,Tbl);
-        {par,Lines} -> match_directive(Record,Flag, Pc,Num,MaxN,Tbl,{par, Lines});
+        {from,Lbl,Src} when Flag =:= from, Lbl =:= Sig, Src =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);  
+        {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);
+        {choice,_name,Lines} -> Npath = find_choice_path(Lines,Pc,Flag,MaxN,Tbl, none), case_continue(Pc,Npath,MaxN,Tbl, none);
+        {continue,NNum} -> case_continue(Pc,NNum,MaxN,Tbl, none);
+        {endpar} -> {endpar};
+        {par,Lines, End} -> match_directive(Flag, Pc,Num,MaxN,Tbl,{par, Lines, none});
         T -> lager:error("[~p] MISSMATCH Revise your code!!!! ~p, ~p, ~p, ~p",[self(),T, Record, Sig, Ordest]),{error}
-    end.
-
-
-find_choice_path(List,_Pc,_Flag,_MaxN,_Tbl) ->
-	find_choice_path(List, Index, Pc,_Flag,_MaxN,_Tbl).
-
-find_choice_path(List, Index,_Pc,_Flag,_MaxN,_Tbl) when Index =:= MaxN->
-    {error};
-find_choice_path(List, Index, Pc,Flag,MaxN,Tbl) ->
-	L = lists:nth(List, Index),
-    Record =  db_utils:get_row(Tbl, Line),
-    case match_directive(Record,Flag,Pc,Line,MaxN,Tbl) of
-        {ok, N} -> N;
-        {error} -> find_path(R,Pc,Flag,MaxN,Tbl)
     end.
 
 
 %% case_continue/4
 %% ====================================================================
 %% @doc
--spec case_continue(Pc :: term(), Num :: term(), MaxN :: integer(), Tbl :: term()) -> Result when
+-spec case_continue(Pc :: term(), Num :: term(), MaxN :: integer(), Tbl :: term(), Par :: term()) -> Result when
     Result :: {ok, integer()} | {ok, term()}.
 %% ====================================================================
-case_continue(Pc,Num,MaxN,Tbl) when Num < MaxN ->
+case_continue(Pc,Num,MaxN,Tbl,Par) when Num < MaxN ->
     Record =  db_utils:get_row(Tbl, Num),
     case Record of
-        {continue, _N} -> match_directive(Record, none,Pc, Num, MaxN,Tbl);
+        {continue, _N} -> match_directive(none,Pc, Num, MaxN,Tbl, Par );
         _ -> {ok, Num}
     end;
-case_continue(_Pc,Num,MaxN,_Tbl) when Num >= MaxN ->
+case_continue(_Pc,Num,MaxN,_Tbl,_Par) when Num >= MaxN ->
     {ok,MaxN}.
 
 
 %% find_path/5
 %% ====================================================================
 %% @doc
--spec find_path(Or :: list(), Pc :: term(), Flag :: term(), MaxN :: integer(), Tbl :: term()) -> Result  when
+-spec find_choice_path(Or :: list(), Pc :: term(), Flag :: term(), MaxN :: integer(), Tbl :: term(), Par::term()) -> Result  when
     Result :: term() | {error}.
 %% ====================================================================
-find_choice_path([],_Pc,_Flag,_MaxN,_Tbl) ->
+find_choice_path([],_Pc,_Flag,_MaxN,_Tbl, _Par) ->
     {error};
-find_choice_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl) ->
+find_choice_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl, Par) ->
     Record =  db_utils:get_row(Tbl, Line),
-    case match_directive(Record,Flag,Pc,Line,MaxN,Tbl) of
+    case match_directive(Flag,Pc,Line,MaxN,Tbl, Par) of
         {ok, N} -> N;
-        {error} -> find_path(R,Pc,Flag,MaxN,Tbl)
+        {error} -> find_choice_path(R,Pc,Flag,MaxN,Tbl,Par)
     end.
 
 
@@ -932,8 +950,9 @@ translate_parsed_to_mnesia(Role,Content)->
     %Be careful with the value of the name of the table to avoig colisions!!!! 
     Mer = db_utils:ets_create(tmp_table, [set]),
     {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
-    fix_endings(Role,Mer,Tnum-1),
     %db_utils:ets_print_table(Role, 0, Tnum),
+
+    fix_endings(Role,Mer,Tnum-1),
     {ok,Tnum}.
 
 
@@ -952,6 +971,9 @@ fix_endings(TbName, Mer, Clines) ->
         {econtinue,CName} ->
             Line = db_utils:ets_lookup(Mer, CName),
             db_utils:update_row(TbName,Clines,{continue, Line});
+        {par,List,CName} ->
+            Line = db_utils:ets_lookup(Mer, CName),
+            db_utils:update_row(TbName, Clines,{par, List, Line});
         _ -> ok
     end,
     fix_endings(TbName, Mer, Clines-1).
@@ -977,11 +999,6 @@ prot_iterator({from,{atom,_,Lbl},{atom,_,Src}}, {TbName,RName,Num,Special,Erecna
 prot_iterator({to,{atom,_,Lbl},{atom,_,Dest}}, {TbName,RName,Num,Special,Erecname}) ->
     db_utils:add_row(TbName,Num,{to,Lbl,Dest}),
     {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname}) ->
-    Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
-    {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2, {TbName,RName, Num+1, Special, Rn},Content),
-    db_utils:add_row(TbName,Num,{choice,Name,[{'or',Num+1} | NSpecial]}),
-    {NTbName, NRName, NNum, [],Erecname};
 prot_iterator({rec,{atom,_Num,CName}, RecContent} , {TbName,RName,Num,Special,Erecname}) ->
     db_utils:ets_insert(RName, {CName,Num}),
     lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, RecContent);
@@ -989,22 +1006,41 @@ prot_iterator({continue, {atom,_Num,CName}}, {TbName,RName,Num,Special,Erecname}
     Line = db_utils:ets_lookup(RName, CName),
     db_utils:add_row(TbName,Num,{continue,Line}),
     {TbName,RName,Num+1,Special,Erecname};
+prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname}) ->
+    Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
+    {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2, {TbName,RName, Num+1, Special, Rn},Content),
+    db_utils:add_row(TbName,Num,{choice,Name,[{'or',Num+1} | NSpecial]}),
+    {NTbName, NRName, NNum, [],Erecname};
 prot_iterator({'or', Content}, {TbName,RName,Num,Special,Erecname}) ->
+    %lager:error("OR: ~p",[Content]),
     {NTbName, NRName,NNum, _NSpecial, _Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, Content),
     {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname};
-prot_iterator({par,Content}, {TbName,RName,Num,Special,Erecname}) ->
-    {NTbName, NRName,NNum, NSpecial,Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num+1,Special, Erecname}, Content),
-    db_utils:add_row(TbName,Num,{choice,NSpecial}),
+prot_iterator({par, Content}, {TbName,RName,Num,Special,Erecname}) ->
+    Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
+    %lager:error("Par ~p",[Content]),
+    {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num+1,Special, Rn}, Content),
+    db_utils:add_row(TbName,Num,{par,[Num+1 | NSpecial],Rn}),
     {NTbName, NRName,NNum, [],Erecname};
-prot_iterator({'and', Content}, {TbName,RName,Num,Special,Erecname}) ->
-    {NTbName, NRName,NNum, _NSpecial, Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special,Erecname}, Content),
-    {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname};
+prot_iterator({'and', ACont}, {TbName,RName,Num,Special,Erecname}) ->
+    %lager:error("AND: ~p",[ACont]),
+    {NTbName, NRName,NNum, _NSpecial, _Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, ACont),
+    %lager:error("Return special and ~p" ,[[Num | Special ]]),
+    {NTbName,NRName,NNum,[ Num  | Special ],Erecname};
 prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname}) ->
     {econtinue, CName} = db_utils:get_row(TbName, Num-1),
     db_utils:ets_insert(RName, {CName, Num}),
     {TbName,RName,Num,Special,Erecname};
+prot_iterator({prec, Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {endpar, CName} = db_utils:get_row(TbName, Num-1),
+    %lager:error("PREC: ~p ~p",[CName, Num]),
+    db_utils:ets_insert(RName, {CName, Num}),
+    {TbName,RName,Num,Special,Erecname};
 prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname}) ->
     db_utils:add_row(TbName, Num, {econtinue, Erecname}),
+    {TbName,RName,Num+1,Special,Erecname};
+prot_iterator({endpar, _},  {TbName,RName,Num,Special,Erecname})->
+    %lager:error("ENDPAR: ~p",[Num]),
+    db_utils:add_row(TbName, Num, {endpar, Erecname}),
     {TbName,RName,Num+1,Special,Erecname};
 prot_iterator(M, N) ->
     lager:error("~p ~p",[M, N]),
@@ -1051,6 +1087,7 @@ mytokens(Word) ->
         choice -> true;
         continue -> true;
         econtinue -> true;
+        endpar -> true;
         create -> true;
         do -> true;
         enter -> true;

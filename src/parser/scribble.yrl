@@ -75,7 +75,7 @@ local_interaction_sequence -> local_interaction local_interaction_sequence : '$1
 local_interaction -> to_send : ['$1'].
 local_interaction -> to_receive : ['$1'].
 local_interaction -> local_choice : ['$1', [{erec,none}]].
-local_interaction -> local_parallel : ['$1'].
+local_interaction -> local_parallel : ['$1', [{prec, none}]].
 local_interaction -> local_recursion : ['$1'].
 local_interaction -> local_continue : ['$1'].
 
@@ -97,10 +97,10 @@ local_choice_cont -> 'or'  local_interaction_block local_choice_cont : [{'or','$
 local_choice_cont -> 'or'  local_interaction_block : [{'or', '$2' ++ [{econtinue,none}]}].
 
 
-local_parallel -> 'par' local_interaction_block  local_parallel_cont : {par, ['$2', '$3'] }.
-local_parallel -> 'par' local_interaction_block : {par, ['$2']}.
-local_parallel_cont -> 'and' local_interaction_block  local_parallel_cont : [{'and', '$2'}] ++ '$3'.
-local_parallel_cont -> 'and' local_interaction_block : [{'and', '$2'}].
+local_parallel -> 'par' local_interaction_block  local_parallel_cont : {par, ['$2' ++ [{endpar,none}], '$3']}.
+local_parallel -> 'par' local_interaction_block : {par, ['$2', [{endpar, none}]]}.
+local_parallel_cont -> 'and' local_interaction_block  local_parallel_cont : [{'and', '$2' ++ [{endpar, none}]}] ++ '$3'.
+local_parallel_cont -> 'and' local_interaction_block : [{'and', '$2' ++ [{endpar, none}]}].
 
 
 local_recursion -> 'rec' identifier local_interaction_block : {rec,'$2',['$3']}.

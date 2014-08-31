@@ -200,7 +200,7 @@ conn_create(Con, ActChn, ConId, ActQ, ActExc, ActCns)->
 
 %% ====================================================================
 %% Current execution data structure (protocol state)
-%%  -record(exc,{state, count, secret_number}).
+%% -record(exc, {state,count, secret_number, confirmation_list, confirmation_state, timer_pid, par}).
 %% ====================================================================
 
 
@@ -221,13 +221,16 @@ exc_update(secret_number, Exc, Val)->
 exc_update(count, Exc, Val)->
     Exc#exc{ count = Val };
 exc_update(state, Exc, Val)->
-    Exc#exc{ state = Val }.
+    Exc#exc{ state = Val };
+exc_update(par, Exc, Val) ->
+    Exc#exc{ par = Val}.
 
 exc_create(State, Count, SN) ->
     #exc{
         state = State,
         count = Count,
-        secret_number = SN
+        secret_number = SN,
+        par = none
     }.%possible states undef, waiting, conver, 
 
 %% ====================================================================
