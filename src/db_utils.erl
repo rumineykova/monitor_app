@@ -61,6 +61,7 @@ add_row(TbName, Num, Instr)->
 
 
 get_row(TableName, RowNumber) ->
+    lager:info("GETROW: ~p ~p",[TableName, RowNumber]),
     [{_,_,Record}] = mnesia:dirty_match_object(TableName, #row{ num = RowNumber , inst = '_'}),
     Record.
 

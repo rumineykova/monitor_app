@@ -1,0 +1,10 @@
+module test;
+
+local protocol partest_pi at pi(role pi, role po) {
+
+	par{
+		ping(string) to po;
+	}and{
+		pong(string) from po;	
+	}
+}

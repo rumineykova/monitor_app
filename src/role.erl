@@ -864,41 +864,74 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
     Pc :: {term(), atom(), atom(), term()}.
 %% ====================================================================
 match_directive(Flag,Pc,Num,MaxN,Tbl, {par, List, End} = Par) -> 
-
+    lager:info("in par case ~p",[Par]),
 	Result = lists:foldl(
         fun
-            ( {K,Line} ,L) when is_list(L) -> 
-                    case match_directive(Flag, Pc,Num,MaxN,Tbl, Par) of
-					   {error} -> L;
-					   {ok, Num} -> lists:keyreplace(K, 1, L, {K, Num});
-                        {endpar} -> 
-                            case match_directive(Flag, Pc,Num,MaxN,Tbl,none) of
-                                {error} -> lists:keyreplace(K,1, L, {K, -1});
+            ( {K, -1}, L) when is_list(L) ->
+                case match_directive(Flag, Pc,End,MaxN,Tbl,none) of
+                                {error} -> L;
                                 {ok, Num} = EndPar -> EndPar
-                            end
+                            end;   
+            ( {K,Line} ,L) when is_list(L) -> 
+                    lager:info("Line search ~p",[Line]),
+                    case match_directive(Flag, Pc,Line,MaxN,Tbl, none) of
+					   {error} -> L;
+					   {ok, RNum} -> lager:info("ok match ~p",[RNum]), lists:keyreplace(K, 1, L, {K, RNum})                          
 				    end;
             (_, {ok, _} = REP) ->
                 REP
             end, List, List),
 
     case Result of
-        Rt when Rt == List -> {error};
-        Rr when is_list(Result) -> {par, Result, End};
-        {ok, Nm} -> {ok, Nm}
+        Rt when Rt == List -> lager:info("case par error"), {error};
+        Rr when is_list(Result) -> 
+            case all_par_ended(Result) of
+                false -> lager:info("par return par ~p", [{par, Result, End}]), {par, Result, End};
+                true -> {ok, End}
+            end;
+        {ok, Nm} -> lager:info("par return ok...."), {ok, Nm}
     end;
 
 match_directive(Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl, none) ->
     Record = db_utils:get_row(Tbl, Num),
-
+    lager:info("R ~p",[Record]),
     case Record of
         {from,Lbl,Src} when Flag =:= from, Lbl =:= Sig, Src =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);  
         {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);
         {choice,_name,Lines} -> Npath = find_choice_path(Lines,Pc,Flag,MaxN,Tbl, none), case_continue(Pc,Npath,MaxN,Tbl, none);
         {continue,NNum} -> case_continue(Pc,NNum,MaxN,Tbl, none);
-        {endpar} -> {endpar};
-        {par,Lines, End} -> match_directive(Flag, Pc,Num,MaxN,Tbl,{par, Lines, none});
+        {endpar, _} -> {endpar};
+        {par,Lines, End} -> lager:info("detected par case"), match_directive(Flag, Pc,End,MaxN,Tbl,{par, Lines, End});
         T -> lager:error("[~p] MISSMATCH Revise your code!!!! ~p, ~p, ~p, ~p",[self(),T, Record, Sig, Ordest]),{error}
     end.
+
+
+
+
+
+all_par_ended(List) ->
+    Res = 
+      try
+         lists:foldl(
+            fun
+                ({K, -1}, Acc) ->
+                    Acc;
+                (_, Acc) -> 
+                    throw(false)
+            end, true, List)
+      catch
+         throw:false -> false
+      end,
+      lager:info("ALLENDRESULT: ~p",[Res]), Res.
+
+
+
+
+
+
+
+
+
 
 
 %% case_continue/4
@@ -911,6 +944,7 @@ case_continue(Pc,Num,MaxN,Tbl,Par) when Num < MaxN ->
     Record =  db_utils:get_row(Tbl, Num),
     case Record of
         {continue, _N} -> match_directive(none,Pc, Num, MaxN,Tbl, Par );
+        {endpar, _} -> {ok, -1};
         _ -> {ok, Num}
     end;
 case_continue(_Pc,Num,MaxN,_Tbl,_Par) when Num >= MaxN ->
@@ -949,10 +983,10 @@ find_choice_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl, Par) ->
 translate_parsed_to_mnesia(Role,Content)->
     %Be careful with the value of the name of the table to avoig colisions!!!! 
     Mer = db_utils:ets_create(tmp_table, [set]),
-    {_,_,Tnum,_,_} = prot_iterator(Content, {Role,Mer,0,[],none}),
-    %db_utils:ets_print_table(Role, 0, Tnum),
+    {_,_,Tnum,_,_,_} = prot_iterator(Content, {Role,Mer,0,[],none,0}),
 
     fix_endings(Role,Mer,Tnum-1),
+    db_utils:ets_print_table(Role, 0, Tnum),
     {ok,Tnum}.
 
 
@@ -963,7 +997,7 @@ translate_parsed_to_mnesia(Role,Content)->
 -spec fix_endings(TbName :: term(), Mer:: term(), Clines :: term()) -> Result when
     Result :: ok.
 %% ====================================================================
-fix_endings(_TbName ,_Mer, 0) ->
+fix_endings(_TbName ,_Mer, -1) ->
     ok;
 fix_endings(TbName, Mer, Clines) ->
     Record = db_utils:get_row(TbName, Clines),
@@ -974,7 +1008,7 @@ fix_endings(TbName, Mer, Clines) ->
         {par,List,CName} ->
             Line = db_utils:ets_lookup(Mer, CName),
             db_utils:update_row(TbName, Clines,{par, List, Line});
-        _ -> ok
+        L -> ok
     end,
     fix_endings(TbName, Mer, Clines-1).
 
@@ -982,66 +1016,67 @@ fix_endings(TbName, Mer, Clines) ->
 %% prot_iterator/2
 %% ====================================================================
 %% @doc
--spec prot_iterator(Tcp :: term(), St :: {TbName, RName, Num, Special, Erecname})-> Result :: term() when
+-spec prot_iterator(Tcp :: term(), St :: {TbName, RName, Num, Special, Erecname, ParSpecial})-> Result :: term() when
     TbName :: term(),
     RName :: term(),
     Num :: term(),
     Special :: term(),
-    Erecname :: term().
+    Erecname :: term(),
+    ParSpecial ::term().
 %% ====================================================================
-prot_iterator( Tp,{TbName,RName,Num,Special,Erecname}) when is_list(Tp) ->
-    lists:foldl(fun prot_iterator/2,{TbName,RName,Num,Special,Erecname}, Tp);
+prot_iterator( Tp,{TbName,RName,Num,Special,Erecname, ParSpecial}) when is_list(Tp) ->
+    lists:foldl(fun prot_iterator/2,{TbName,RName,Num,Special,Erecname, ParSpecial}, Tp);
 prot_iterator({protocol,_Name,_Role, _Roles,Content}, St) ->
     lists:foldl(fun prot_iterator/2,St, Content);
-prot_iterator({from,{atom,_,Lbl},{atom,_,Src}}, {TbName,RName,Num,Special,Erecname}) ->
+prot_iterator({from,{atom,_,Lbl},{atom,_,Src}}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     db_utils:add_row(TbName,Num,{from,Lbl,Src}),
-    {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({to,{atom,_,Lbl},{atom,_,Dest}}, {TbName,RName,Num,Special,Erecname}) ->
+    {TbName,RName,Num+1,Special,Erecname, ParSpecial};
+prot_iterator({to,{atom,_,Lbl},{atom,_,Dest}}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     db_utils:add_row(TbName,Num,{to,Lbl,Dest}),
-    {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({rec,{atom,_Num,CName}, RecContent} , {TbName,RName,Num,Special,Erecname}) ->
+    {TbName,RName,Num+1,Special,Erecname, ParSpecial};
+prot_iterator({rec,{atom,_Num,CName}, RecContent} , {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     db_utils:ets_insert(RName, {CName,Num}),
-    lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, RecContent);
-prot_iterator({continue, {atom,_Num,CName}}, {TbName,RName,Num,Special,Erecname}) ->
+    lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname, ParSpecial}, RecContent);
+prot_iterator({continue, {atom,_Num,CName}}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     Line = db_utils:ets_lookup(RName, CName),
     db_utils:add_row(TbName,Num,{continue,Line}),
-    {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {TbName,RName,Num+1,Special,Erecname, ParSpecial};
+prot_iterator({choice,{atom,_,Name},Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
-    {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2, {TbName,RName, Num+1, Special, Rn},Content),
+    {NTbName, NRName,NNum, NSpecial,_Erecname, _ParSpecial} = lists:foldl(fun prot_iterator/2, {TbName,RName, Num+1, Special, Rn, ParSpecial},Content),
     db_utils:add_row(TbName,Num,{choice,Name,[{'or',Num+1} | NSpecial]}),
-    {NTbName, NRName, NNum, [],Erecname};
-prot_iterator({'or', Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {NTbName, NRName, NNum, [],Erecname, ParSpecial};
+prot_iterator({'or', Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     %lager:error("OR: ~p",[Content]),
-    {NTbName, NRName,NNum, _NSpecial, _Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, Content),
-    {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname};
-prot_iterator({par, Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {NTbName, NRName,NNum, _NSpecial, _Erecname, _ParSpecial} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname, ParSpecial}, Content),
+    {NTbName,NRName,NNum,[ {'or',Num } | Special ],Erecname, ParSpecial};
+prot_iterator({par, Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     Rn =binary_to_atom(list_to_binary( [integer_to_list(random:uniform(10)) || _ <- lists:seq(1, 6)]),utf8),
     %lager:error("Par ~p",[Content]),
-    {NTbName, NRName,NNum, NSpecial,_Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num+1,Special, Rn}, Content),
-    db_utils:add_row(TbName,Num,{par,[Num+1 | NSpecial],Rn}),
-    {NTbName, NRName,NNum, [],Erecname};
-prot_iterator({'and', ACont}, {TbName,RName,Num,Special,Erecname}) ->
+    {NTbName, NRName,NNum, NSpecial,_Erecname, _ParSpecial} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num+1,Special, Rn, 1}, Content),
+    db_utils:add_row(TbName,Num,{par,[{0,Num+1} | NSpecial],Rn}),
+    {NTbName, NRName,NNum, [],Erecname, ParSpecial};
+prot_iterator({'and', ACont}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     %lager:error("AND: ~p",[ACont]),
-    {NTbName, NRName,NNum, _NSpecial, _Erecname} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname}, ACont),
+    {NTbName, NRName,NNum, _NSpecial, _Erecname, _ParSpecial} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname, ParSpecial +1}, ACont),
     %lager:error("Return special and ~p" ,[[Num | Special ]]),
-    {NTbName,NRName,NNum,[ Num  | Special ],Erecname};
-prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {NTbName,NRName,NNum,[ { ParSpecial,Num}  | Special ],Erecname, ParSpecial};
+prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     {econtinue, CName} = db_utils:get_row(TbName, Num-1),
     db_utils:ets_insert(RName, {CName, Num}),
-    {TbName,RName,Num,Special,Erecname};
-prot_iterator({prec, Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {TbName,RName,Num,Special,Erecname, ParSpecial};
+prot_iterator({prec, Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     {endpar, CName} = db_utils:get_row(TbName, Num-1),
     %lager:error("PREC: ~p ~p",[CName, Num]),
     db_utils:ets_insert(RName, {CName, Num}),
-    {TbName,RName,Num,Special,Erecname};
-prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname}) ->
+    {TbName,RName,Num,Special,Erecname, ParSpecial};
+prot_iterator({econtinue, _Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     db_utils:add_row(TbName, Num, {econtinue, Erecname}),
-    {TbName,RName,Num+1,Special,Erecname};
-prot_iterator({endpar, _},  {TbName,RName,Num,Special,Erecname})->
+    {TbName,RName,Num+1,Special,Erecname, ParSpecial};
+prot_iterator({endpar, _},  {TbName,RName,Num,Special,Erecname, ParSpecial})->
     %lager:error("ENDPAR: ~p",[Num]),
     db_utils:add_row(TbName, Num, {endpar, Erecname}),
-    {TbName,RName,Num+1,Special,Erecname};
+    {TbName,RName,Num+1,Special,Erecname, ParSpecial};
 prot_iterator(M, N) ->
     lager:error("~p ~p",[M, N]),
     abort.
