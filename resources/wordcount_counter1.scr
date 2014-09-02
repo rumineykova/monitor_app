@@ -1,0 +1,27 @@
+module wordcount_wordcount_counter1;
+
+type <py>  "StringType" from "Types.py" as string;
+
+local protocol wordcount_counter1 at counter1(role client, role counter1, role counter2, role counter3) {
+	par{
+		ready(string) from client;
+		confirm(string) to client;
+	}
+
+	rec p1{
+		data_chunk(string) from client;
+		choice at client
+		{
+			end_chunks(string) from client;
+		}or{
+			countinue(string) from client;
+			continue p1;
+		}
+	}
+
+	ready_for_results(string) from client;
+
+	par{
+		results(string) to client;
+	}
+}

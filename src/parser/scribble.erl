@@ -1,7 +1,7 @@
 -module(scribble).
 -export([parse/1, parse_and_scan/1, format_error/1]).
 
--file("/usr/lib/erlang/lib/parsetools-2.0.10/include/yeccpre.hrl", 0).
+-file("/usr/local/Cellar/erlang/R16B03-1/lib/erlang/lib/parsetools-2.0.10/include/yeccpre.hrl", 0).
 %%
 %% %CopyrightBegin%
 %%

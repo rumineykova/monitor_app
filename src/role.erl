@@ -22,7 +22,7 @@
 %TODO: this has to be in a config file
 -define(USER,  <<"test">>).
 -define(PWD,  <<"test">>).
--define(HOST,  "146.169.45.87").
+-define(HOST,  "94.23.60.219").
 -define(DHOST, "localhost").
 -define(PORT, 65005).
 
@@ -490,6 +490,7 @@ handle_cast({terminated,_Prot},State)->
     {noreply,NState};
 handle_cast({cancel,Prot},State)->
     role:'end'(self(),Prot),
+    %gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
     {noreply, State};
 handle_cast({crash},State)->
     {stop, abnormal, State};
@@ -869,6 +870,8 @@ match_directive(Flag,Pc,Num,MaxN,Tbl, {par, List, End} = Par) ->
         fun
             (_, {ok, _} = REP) ->
                 REP;
+            ( {K, -1}, L) when is_list(L), End =:= MaxN ->
+                L;
             ( {K, -1}, L) when is_list(L) ->
                 case match_directive(Flag, Pc,End,MaxN,Tbl,none) of
                                 {error} -> L;
@@ -1060,7 +1063,7 @@ prot_iterator({'and', ACont}, {TbName,RName,Num,Special,Erecname, ParSpecial}) -
     %lager:error("AND: ~p",[ACont]),
     {NTbName, NRName,NNum, _NSpecial, _Erecname, _ParSpecial} = lists:foldl(fun prot_iterator/2,{TbName, RName, Num, Special, Erecname, ParSpecial +1}, ACont),
     %lager:error("Return special and ~p" ,[[Num | Special ]]),
-    {NTbName,NRName,NNum,[ { ParSpecial,Num}  | Special ],Erecname, ParSpecial};
+    {NTbName,NRName,NNum,[ { ParSpecial,Num}  | Special ],Erecname, ParSpecial+1};
 prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     {econtinue, CName} = db_utils:get_row(TbName, Num-1),
     db_utils:ets_insert(RName, {CName, Num}),
