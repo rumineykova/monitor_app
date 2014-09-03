@@ -12,7 +12,7 @@
 -include("records.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 %% API
--export([declare_exc/4, declare_q/2, bind_q_to_exc/4, publish_msg/3, publish_msg/4,
+-export([declare_exc/4, declare_q/3, bind_q_to_exc/4, publish_msg/3, publish_msg/4,
          bind_to_global_exchange/3, subscribe/2, unsubscribe/2,
          connect/3, open_channel/1,manual_recv/2, delete_q/2,delete_exc/2]).
 
@@ -30,11 +30,11 @@ open_channel(Con) ->
 %% Declarations
 %% =======================================================================
 
-declare_q(Chn,Name) when is_atom(Name) ->
-  declare_q(Chn, atom_to_binary(Name, utf8));
-declare_q(Chn, Name) when is_binary(Name)->
+declare_q(Chn,Name,Delete) when is_atom(Name) ->
+  declare_q(Chn, atom_to_binary(Name, utf8), Delete);
+declare_q(Chn, Name, Delete) when is_binary(Name)->
   #'queue.declare_ok'{queue = Q}
-    = amqp_channel:call(Chn, #'queue.declare'{queue=Name, auto_delete=false}),
+    = amqp_channel:call(Chn, #'queue.declare'{queue=Name, auto_delete=Delete}),
   Q.
 
 
@@ -46,6 +46,7 @@ declare_exc(Chn, Name, Type, Delete) when is_binary(Name)->
       auto_delete=Delete},
 
   #'exchange.declare_ok'{} = amqp_channel:call(Chn, EDeclare).
+
 
 
 
@@ -85,11 +86,11 @@ bind_to_global_exchange(Protocol,Channel,Queue_name) when is_atom(Protocol), is_
   bind_to_global_exchange(atom_to_binary(Protocol,utf8),Channel, atom_to_binary(Queue_name,utf8));
 bind_to_global_exchange(Protocol,Channel,Queue_name) when is_binary(Protocol), is_binary(Queue_name) ->
 
-  EDeclare = #'exchange.declare'{exchange = Protocol, type = <<"fanout">>},
+  EDeclare = #'exchange.declare'{exchange = Protocol, type = <<"fanout">>, auto_delete=true},
   #'exchange.declare_ok'{} = amqp_channel:call(Channel, EDeclare),
 
   #'queue.declare_ok'{queue = Q}
-    = amqp_channel:call(Channel, #'queue.declare'{queue=Queue_name,auto_delete=false}),
+    = amqp_channel:call(Channel, #'queue.declare'{queue=Queue_name,auto_delete=true}),
   Binding = #'queue.bind'{queue       = Q,
     exchange    = Protocol},
 

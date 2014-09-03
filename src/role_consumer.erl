@@ -72,7 +72,7 @@ handle_info({#'basic.deliver'{delivery_tag = Tag}, Content}, {Chn, _, Master, _}
 handle_info({'DOWN', _MRef, process, _Pid, _Info}, State) ->
   %lager:info("[CONSUMER] Downd"),
   {noreply, State};
-handle_info(Mse, State) ->
+handle_info(_Mse, State) ->
   %lager:info("[CONSUMER] UNKONWN MESSAGE ~p ",[Mse]),
 {noreply, State}.
 
@@ -94,7 +94,7 @@ handle_cast(_Message, State) ->
 
 %% Closes the channel this gen_server instance started
 %% @private
-terminate(Reason,_State)->
+terminate(_Reason,_State)->
   %lager:info("[CONSUMER] Terminated reason ~p",[Reason]),
   ok.
 

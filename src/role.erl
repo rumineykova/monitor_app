@@ -120,8 +120,8 @@ zero_init(Path, State) ->
         timeout -> {0,{error, no_projection_found}};
         Scr ->
             {ok, NL} = case db_utils:get_table(Role) of
-                {created, TbName} -> lager:info("C"),translate_parsed_to_mnesia(TbName,Scr);
-                {exists, TbName} ->  lager:info("E"),translate_parsed_to_mnesia(TbName,Scr);
+                {created, TbName} -> translate_parsed_to_mnesia(TbName,Scr);
+                {exists, TbName} ->  translate_parsed_to_mnesia(TbName,Scr);
                 P -> lager:info("~p",[P]),P
             end,
             
@@ -203,7 +203,7 @@ recovery_init(State, SavedState) ->
     BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ SavedState#child_data.secret_number),
     Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ SavedState#child_data.secret_number),
     %Declare the queue an bind it to the new exchange
-    Q = rbbt_utils:declare_q(Channel, BName),
+    Q = rbbt_utils:declare_q(Channel, BName, false),
 
     rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, Channel),
 
@@ -250,7 +250,7 @@ handle_call({create,_Protocol},_From,State) when State#role_data.exc#exc.state =
     Prot = list_to_binary(atom_to_list(State#role_data.spec#spec.protocol) ++ "_" ++ Rand),
 
     %% NEW Exchange for the specific comunication
-    rbbt_utils:declare_exc(State#role_data.conn#conn.active_chn, Prot, <<"direct">>, false),
+    rbbt_utils:declare_exc(State#role_data.conn#conn.active_chn, Prot, <<"direct">>, true),
 
     % Publish create message to all participiant  === JOIN CONVERSATION
     rbbt_utils:publish_msg(State#role_data.conn#conn.active_chn,
@@ -274,7 +274,6 @@ handle_call({create,_Protocol},_From,State) ->
     {reply, {error, "already in a conversation"}, State};
 
 handle_call({init_state}, _From, State)->
-
     %% Similar to wait in  posix the process is alive until someone read that the has been an error
     %% If an error is the response then the process ends itself, if not continues as normal
     lager:info("init_state ~p",[State#role_data.state]),
@@ -311,7 +310,7 @@ handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =
     Chn = State#role_data.conn#conn.active_chn,
 
     %Declare the queue an bind it to the new exchange
-    Q = rbbt_utils:declare_q(Chn, BName),
+    Q = rbbt_utils:declare_q(Chn, BName, false),
     rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
 
     %Spawn a new consumer for the new queue
@@ -326,7 +325,7 @@ handle_cast({create_self, Src, Rand},State) when State#role_data.exc#exc.state =
     %Publish the confirmation of join
     rbbt_utils:publish_msg(Chn, Prot, Src, {confirm, State#role_data.spec#spec.role}),
     {noreply, NState};
-handle_cast({create, Src, Rand},State) when State#role_data.spec#spec.role =:= Src->
+handle_cast({create, Src, _Rand},State) when State#role_data.spec#spec.role =:= Src->
     {noreply, State};
 handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= waiting->
     %lager:info("[~p][~p] NOT ~p ~p",[self(), State#role_data.spec#spec.role, Rand, State#role_data.exc]),
@@ -345,7 +344,7 @@ handle_cast({create, Src, Rand},State) when State#role_data.exc#exc.state =:= wa
     Chn = State#role_data.conn#conn.active_chn,
 
     %Declare the queue an bind it to the new exchange
-    Q = rbbt_utils:declare_q(Chn, BName),
+    Q = rbbt_utils:declare_q(Chn, BName, false),
     rbbt_utils:bind_q_to_exc(Q, Prot, State#role_data.spec#spec.role, State#role_data.conn#conn.active_chn),
 
     %Spawn a new consumer for the new queue
@@ -375,15 +374,16 @@ handle_cast({confirm,Role},State) ->
                 Exc = data_utils:exc_update( confirmation_list , State#role_data.exc, New_waiting_list),
                 data_utils:role_data_update(exc, State, Exc)
     end,
+    lager:info("CONFIRM SECRET_NUMBER = ~p",[NState#role_data.exc#exc.secret_number]),
+
     {noreply, NState};
 handle_cast({confirmation_timeout}, State) ->
     lager:error("[~p] Timeout ~p",[self(),State#role_data.exc#exc.confirmation_list]),
-    bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
-    gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
-    role:'end'(self(),"time_out waiting for confirmation"),
-    Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
-    data_utils:role_data_update_mult(State, [{exc, Exc}]),
+    %bcast_msg_to_roles(others, State, {cancel, State#role_data.spec#spec.protocol}),
+    %gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
+    cancel_protocol(State, confirmation_timeout),
 
+    role:'end'(self(),"time_out waiting for confirmation"),
     {noreply, State};
 handle_cast({ready},State) ->
     lager:info("[~p] Sending READY to ~p",[self(), State#role_data.spec#spec.imp_ref]),
@@ -418,12 +418,14 @@ handle_cast({send,Dest,Sig,Cont} = Pc, State) when State#role_data.exc#exc.state
             State#role_data.exc#exc{ par = {par,List, End}};
 
         {error} -> lager:info("[~p] error detected aborting comunication!",[self()]),
-            cancel_protocol(State),
+            gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error,{error, message_mismatch}}),
+            cancel_protocol(State, {verification_error, Pc }),
             State#role_data.exc
     end,
 
     NState = data_utils:role_data_update(exc, State, Exc),
     check_for_termination(NState, Exc#exc.count),
+
     {noreply,NState};
 handle_cast({send,_Dest,_Sig,_Cont}, State) ->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error,{error, sent_and_no_active_conversation}}),
@@ -446,25 +448,29 @@ handle_cast({msg,_Ordest,Sig,Cont}=Pc,State) when State#role_data.exc#exc.state 
         {par, List, End} ->  {func,_s,Fimp} = lists:keyfind(Sig, 2, State#role_data.spec#spec.funcs),
 
             gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback,Fimp,{msg,Cont}}),
-            State#role_data.exc#exc{ par = {par, List, End}, count = End };
+            State#role_data.exc#exc{ par = {par, List, End}};%, count = End };
         {error} ->  lager:info("[~p] error detected aborting comunication!",[self()]),
-            cancel_protocol(State),
+            gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error,{error, received_message_mismatch}}),
+            cancel_protocol(State, {verification_error, Pc}),
             State#role_data.exc
     end,
 
     NState = data_utils:role_data_update(exc, State, Exc),
+   
     check_for_termination(NState, Exc#exc.count),
     {noreply,NState};
 handle_cast({msg,_Ordest,_Sig,_Cont},State) ->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{callback, error, {error, recv_and_no_active_conversation}}),
     {noreply, State};
-handle_cast({'end',_Prot},State)->
+handle_cast({'end',_Prot},State) ->
     %lager:info("[~p] 'end' cast",[self()]),
     %Terminating the consumer
     ok = terminate_consumer(State),
-    %role_consumer:stop(State#role_data.conn#conn.active_cns),
 
     Channel = State#role_data.conn#conn.active_chn,
+
+    BName = list_to_binary(atom_to_list(State#role_data.spec#spec.role) ++ "_" ++ State#role_data.exc#exc.secret_number),
+    rbbt_utils:delete_q(Channel,BName),
 
     Q = rbbt_utils:bind_to_global_exchange(State#role_data.spec#spec.protocol,
         Channel,
@@ -475,9 +481,9 @@ handle_cast({'end',_Prot},State)->
     Aux = data_utils:conn_create(State#role_data.conn#conn.connection,Channel,undef,Q,State#role_data.spec#spec.protocol,Cons),
     Exc = data_utils:exc_update_mult(State#role_data.exc, [{confirmation_list, [State#role_data.spec#spec.role | State#role_data.spec#spec.roles] },
                                             {confirmation_state, none},
-                                            {state, waiting}]),
+                                            {state, waiting},
+                                            {secret_number, undef}]),
     NArgs = data_utils:role_data_update_mult(State,[{conn, Aux}, {exc, Exc}]),
-    %NArgs = data_utils:role_data_update(conn, State, Aux),
 
     {noreply,NArgs};
 handle_cast({terminated,_Prot},State)->
@@ -485,12 +491,15 @@ handle_cast({terminated,_Prot},State)->
     gen_monrcp:send(State#role_data.spec#spec.imp_ref,{'callback','terminated',{reason,normal}}),
     role:'end'(self(),State#role_data.spec#spec.protocol),
 
-    Exc = data_utils:exc_update(secret_number, State#role_data.exc, undef),
-    NState = data_utils:role_data_update_mult(State, [{exc, Exc}]),
-    {noreply,NState};
-handle_cast({cancel,Prot},State)->
+    {noreply,State};
+handle_cast({cancel,{Prot, Reason}},State) when State#role_data.exc#exc.state =:= conver ->
+    %bcast_msg_to_roles(others, State, {cancel, {Prot, Reason}}),
+    gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{Reason}}),
     role:'end'(self(),Prot),
     %gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{timeout}}),
+    {noreply, State};
+handle_cast({cancel,{Prot, Reason}},State)  ->
+    lager:info("cancel but not in a conversation"),
     {noreply, State};
 handle_cast({crash},State)->
     {stop, abnormal, State};
@@ -531,7 +540,7 @@ handle_info({'DOWN',_MonRef,process,Pid,normal}, State) when Pid =:= State#role_
     %lager:info("DOwn STOPING FOR normal halt"),
     {stop, normal, State};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= conver ->
-	
+	lager:info("processes down for reason ~p",[Reason]),
 	NState = case terminate_consumer(State) of
         ok -> Conn = data_utils:conn_update(active_cns, State#role_data.conn, none),
                data_utils:role_data_update(conn, State, Conn);
@@ -539,7 +548,7 @@ handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc
     end,
 
 	lager:info("down conversation ~p", [Pid]),
-    {noreply, State, ?RECOVER_TIMEOUT};
+    {noreply, NState, ?RECOVER_TIMEOUT};
 handle_info({'DOWN',_MonRef,process,Pid,Reason}, State) when State#role_data.exc#exc.state =:= waiting ->
 
     NState = case terminate_consumer(State) of
@@ -807,12 +816,12 @@ save_file(Path, Filename,Bs) ->
 %% cancel_protocol/2
 %% ====================================================================
 %% @doc
--spec cancel_protocol(State :: term()) -> Any :: term().
+-spec cancel_protocol(State :: term(), Reason :: atom()) -> Any :: term().
 %% ====================================================================
-cancel_protocol(State)->
-    Msg = {cancel,State#role_data.spec#spec.protocol},
-    bcast_msg_to_roles(all, State, Msg).
-
+cancel_protocol(State, Reason)->
+    Msg = {cancel,{State#role_data.spec#spec.protocol, Reason}},
+    gen_monrcp:send(State#role_data.spec#spec.imp_ref, {callback,cancel,{Reason}}),
+    bcast_msg_to_roles(others, State, Msg).
 
 %% bcast_msg_to_roles/3
 %% ====================================================================
@@ -864,40 +873,44 @@ bcast_msg_to_roles([Role|Roles],Exc,Chn,Content)->
     Result :: {error} | term(),
     Pc :: {term(), atom(), atom(), term()}.
 %% ====================================================================
-match_directive(Flag,Pc,Num,MaxN,Tbl, {par, List, End} = Par) -> 
-    lager:info("in par case ~p",[Par]),
+match_directive(Flag,Pc,_Num,MaxN,Tbl, {par, List, End} = Par) -> 
+    %lager:info("in par case ~p",[Par]),
 	Result = lists:foldl(
         fun
             (_, {ok, _} = REP) ->
                 REP;
-            ( {K, -1}, L) when is_list(L), End =:= MaxN ->
+            ( {_Key, -1}, L) when is_list(L), End =:= MaxN ->
                 L;
-            ( {K, -1}, L) when is_list(L) ->
+            ( {_Key, -1}, L) when is_list(L) ->
                 case match_directive(Flag, Pc,End,MaxN,Tbl,none) of
                                 {error} -> L;
                                 EndPar -> EndPar
                             end;   
-            ( {K,Line} ,L) when is_list(L) -> 
-                    lager:info("Line search ~p",[Line]),
+            ( {Key,Line} ,L) when is_list(L) -> 
+                    %lager:info("Line search ~p",[Line]),
                     case match_directive(Flag, Pc,Line,MaxN,Tbl, none) of
 					   {error} -> L;
-					   {ok, RNum} -> lager:info("ok match ~p",[RNum]), lists:keyreplace(K, 1, L, {K, RNum})                          
+					   {ok, RNum} -> %lager:info("ok match ~p",[RNum]), 
+                                    lists:keyreplace(Key, 1, L, {Key, RNum})                          
 				    end
             end, List, List),
 
     case Result of
-        Rt when Rt == List -> lager:info("case par error"), {error};
-        Rr when is_list(Result) -> 
+        Rt when Rt == List -> %lager:info("case par error"), 
+                            {error};
+        Rr when is_list(Rr) -> 
             case all_par_ended(Result) of
-                false -> lager:info("par return par ~p", [{par, Result, End}]), {par, Result, End};
+                false -> %lager:info("par return par ~p", [{par, Result, End}]),
+                         {par, Result, End};
                 true -> {ok, End}
             end;
-        {ok, Nm} -> lager:info("par return ok...."), {ok, Nm}
+        {ok, Nm} -> %lager:info("par return ok...."), 
+                    {ok, Nm}
     end;
 
 match_directive(Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl, none) ->
     Record = db_utils:get_row(Tbl, Num),
-    lager:info("R ~p",[Record]),
+    %lager:info("R ~p",[Record]),
     case Record of
         {from,Lbl,Src} when Flag =:= from, Lbl =:= Sig, Src =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);  
         {to,Lbl,Dest} when Flag =:= to, Lbl =:= Sig, Dest =:= Ordest -> case_continue(Pc,Num+1,MaxN,Tbl, none);
@@ -910,26 +923,19 @@ match_directive(Flag,{_,Ordest,Sig,_Cont} = Pc,Num,MaxN,Tbl, none) ->
 
 
 
-
-
 all_par_ended(List) ->
-    Res = 
       try
          lists:foldl(
             fun
-                ({K, -1}, Acc) ->
+                ({_Key, -1}, Acc) ->
                     Acc;
-                (_, Acc) -> 
+                (_, _Acc) -> 
                     throw(false)
             end, true, List)
       catch
          throw:false -> false
-      end,
-      lager:info("ALLENDRESULT: ~p",[Res]), Res.
-
-
-
-
+      end.
+      %lager:info("ALLENDRESULT: ~p",[Res]).
 
 
 
@@ -963,7 +969,7 @@ case_continue(_Pc,Num,MaxN,_Tbl,_Par) when Num >= MaxN ->
 find_choice_path([],_Pc,_Flag,_MaxN,_Tbl, _Par) ->
     {error};
 find_choice_path([{'or',Line} | R],Pc,Flag,MaxN,Tbl, Par) ->
-    Record =  db_utils:get_row(Tbl, Line),
+    %Record =  db_utils:get_row(Tbl, Line),
     case match_directive(Flag,Pc,Line,MaxN,Tbl, Par) of
         {ok, N} -> N;
         {error} -> find_choice_path(R,Pc,Flag,MaxN,Tbl,Par)
@@ -989,7 +995,7 @@ translate_parsed_to_mnesia(Role,Content)->
     {_,_,Tnum,_,_,_} = prot_iterator(Content, {Role,Mer,0,[],none,0}),
 
     fix_endings(Role,Mer,Tnum-1),
-    db_utils:ets_print_table(Role, 0, Tnum),
+    %db_utils:ets_print_table(Role, 0, Tnum),
     {ok,Tnum}.
 
 
@@ -1011,7 +1017,7 @@ fix_endings(TbName, Mer, Clines) ->
         {par,List,CName} ->
             Line = db_utils:ets_lookup(Mer, CName),
             db_utils:update_row(TbName, Clines,{par, List, Line});
-        L -> ok
+        _Other -> ok
     end,
     fix_endings(TbName, Mer, Clines-1).
 
@@ -1068,7 +1074,7 @@ prot_iterator({erec, _Content}, {TbName,RName,Num,Special,Erecname, ParSpecial})
     {econtinue, CName} = db_utils:get_row(TbName, Num-1),
     db_utils:ets_insert(RName, {CName, Num}),
     {TbName,RName,Num,Special,Erecname, ParSpecial};
-prot_iterator({prec, Content}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
+prot_iterator({prec, _}, {TbName,RName,Num,Special,Erecname, ParSpecial}) ->
     {endpar, CName} = db_utils:get_row(TbName, Num-1),
     %lager:error("PREC: ~p ~p",[CName, Num]),
     db_utils:ets_insert(RName, {CName, Num}),
